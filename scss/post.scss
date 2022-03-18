@@ -1,0 +1,198 @@
+@mixin color($property, $light, $dark, $name) {
+    @at-root {
+        body.dark {
+            --#{$name}: #{$dark};
+        }
+        body:not(.dark) {
+            --#{$name}: #{$light};  
+        }
+    };
+    #{$property}: var(--#{$name});
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    font-size: 18px;
+
+    @include color(color, black, white, text-color-main);
+    @include color(background-color, white, rgb(43, 43, 43), bg-color-main);
+}
+
+h1 {
+    font-size: 66px;
+    font-weight: 700;
+    @media screen and (max-width: 768px) {
+        font-size: 50px;
+    }
+}
+
+h1, h2 {
+    text-transform: uppercase;
+    margin-bottom: 0;
+}
+
+article, main {
+    > h1 {
+        margin-top: 1rem;
+        overflow: auto;
+    }
+    margin-left: auto;
+    margin-right: auto;
+
+
+    width:75%;
+
+    @media screen and (max-width: 768px) {
+        width: 90%;
+    }
+}
+
+a {
+    @include color(color, rgb(255, 72, 0), rgb(255, 153, 0), color-link);
+
+    &.footnote-ref {
+        text-decoration: none;
+    }
+}
+
+
+
+
+pre, .sourceCode {
+    @include color(background-color, rgb(230, 230, 230), #393939, bg-color-code);
+    overflow: auto;
+}
+
+code:not(.sourceCode){
+    @include color(color, rgb(160, 0, 0), rgb(230, 0, 0), inline-code-color);
+}
+
+div.sourceCode{
+    padding-left: 1rem;
+    padding-right: 1rem;
+
+}
+
+.haskell {
+    .ot, .op, .kw {
+        @include color(color, rgb(122, 0, 0), rgb(255, 0, 0), haskell-kw);
+    }
+
+    .co {
+        @include color(color, rgb(136, 136, 136), rgb(145, 145, 145), haskell-co);
+    }
+
+    .dt {
+        @include color(color, rgb(160, 96, 0), rgb(255, 153, 0), haskell-dt);
+    }
+
+    .dv {
+        @include color(color, rgb(209, 0, 0), #ff0000, haskell-dv);
+    }
+
+    .st {
+        @include color(color, rgb(0, 150, 32), rgb(0, 185, 40), haskell-st)
+    }
+
+}
+
+
+/* navbar */
+.navbar {
+    display: grid;
+    grid-template-columns: 1fr 2fr 0.5fr 0.5fr;
+    @media screen and (max-width: 768px) {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 0.5fr 0.5fr;
+
+        .navigation.middle {
+            display: none;
+        }
+
+        > * {
+            margin: 0;
+            border-bottom: rgb(46, 46, 46) solid 2px;
+        }
+    }
+    @include color(background-color, #000000, #000000, navbar-bg);
+    
+    > * {
+        padding: 1rem;
+    }
+
+    * {
+        @include color(color, #ffffff, #ffffff, navbar-fg);
+        font-weight: bold;
+        text-decoration: none;
+    }
+    ul > * {
+        display: inline-block;
+    }
+}
+
+.navigation {
+    text-align: center;
+
+    vertical-align: middle;
+
+    > .header {
+        font-size: 250%;
+        font-weight: bolder;
+    }
+    *:not(.header) {
+        font-size: 150%;
+    }
+}
+
+.dark-mode {
+    border: none;
+    padding: 5px;
+
+    @include color(background-color, white, #393939, dm-bg);
+    @include color(color, #393939, white, dm-fg);
+}
+
+/* /navbar */
+
+/*index*/
+.index > h1 {
+    text-align: center;
+}
+
+.post-summaries {
+    * {
+        font-size: 33px;
+        text-transform: uppercase;
+        text-decoration: none;
+        
+        font-weight: bold;
+
+        @include color(color, black, white, summary-fg)
+    }
+    > li {
+        list-style: none;
+        padding-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    a:hover {
+        @include color(color, rgb(160, 0, 0), red, summary-hover);
+            }
+
+    .date {
+        float: right;
+    }
+}
+/* /index */
+
+/* about */
+.about {
+    h1 {
+        text-align: center;
+    }
+}
+article.about {
+    width: 50%;
+}
+/* /about */

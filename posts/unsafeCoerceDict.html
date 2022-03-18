@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title> Faking Local Instances with unsafeCoerce Dict</title>
+        <meta name="author" content="Finn Schneider">
+        <meta name=viewport content="width=device-width, initial-scale=1.0">
+        
+        <!--Fonts-->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">         
+        
+        <link rel="stylesheet" type="text/css" href="/assets/post.css">
+    </head>
+    <body>
+        <header>
+    <nav class="navbar">
+        <div class="navigation left">
+            <a href="/" class="header">Prophetlabs</a>
+        </div>
+        
+        <div class="navigation middle">
+        </div>
+        <div class="navigation right">
+            <button class="dark-mode" onclick="toggleDarkMode()">Dark Mode</button>
+        </div>
+        <div class="navigation right">
+            <a href="/about.html">About</a>
+        </div>
+    </nav>
+</header>
+
+        <article>
+            <h1> Faking Local Instances with <code>unsafeCoerce Dict</code></h1>
+            <!--title: Faking Local Instances with <code>unsafeCoerce Dict</code>-->
+<!--date: 2 March 2022-->
+<!--pubDate:2022-3-2-->
+<!--reddit:https://www.reddit.com/Ihaventactuallyupdatedthelinkyetsorry-->
+<p>When you first learned about Haskell’s <code>Monoid</code> typeclass, you were probably quite surprised to find out that there is no instance for <code>Monoid Int</code> in <code>base</code>.</p>
+<p>After all, <code>(+)</code> is an associative binary operation, and <code>0</code> acts as a unit element.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Semigroup</span> <span class="dt">Int</span> <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    (<span class="op">&lt;&gt;</span>) <span class="ot">=</span> (<span class="op">+</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Monoid</span> <span class="dt">Int</span> <span class="kw">where</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mempty</span> <span class="ot">=</span> <span class="dv">0</span></span></code></pre></div>
+<p>The reason, as you will have learned is that this is not the <em>only</em> possible instance for <code>Monoid Int</code>.</p>
+<p>The following instance is, in fact, just as valid.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Semigroup</span> <span class="dt">Int</span> <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    (<span class="op">&lt;&gt;</span>) <span class="ot">=</span> (<span class="op">*</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Monoid</span> <span class="dt">Int</span> <span class="kw">where</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mempty</span> <span class="ot">=</span> <span class="dv">1</span></span></code></pre></div>
+<p>You might also be aware, that the way to work around this is to declare newtype wrappers and to wrap and unwrap all <code>Int</code>s every time the Monoid instance is needed.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Sum</span> a <span class="ot">=</span> <span class="dt">Sum</span> {<span class="ot">getSum ::</span> a}</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Product</span> a <span class="ot">=</span> <span class="dt">Product</span> {<span class="ot">getProduct ::</span> a}</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> (<span class="dt">Num</span> a) <span class="ot">=&gt;</span> <span class="dt">Semigroup</span> (<span class="dt">Sum</span> a) <span class="kw">where</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">Sum</span> x) <span class="op">&lt;&gt;</span> (<span class="dt">Sum</span> y) <span class="ot">=</span> <span class="dt">Sum</span> (x <span class="op">+</span> y)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> (<span class="dt">Num</span> a) <span class="ot">=&gt;</span> <span class="dt">Monoid</span> (<span class="dt">Sum</span> a) <span class="kw">where</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mempty</span> <span class="ot">=</span> <span class="dt">Sum</span> <span class="dv">0</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> (<span class="dt">Num</span> a) <span class="ot">=&gt;</span> <span class="dt">Semigroup</span> (<span class="dt">Product</span> a) <span class="kw">where</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">Product</span> x) <span class="op">&lt;&gt;</span> (<span class="dt">Product</span> y) <span class="ot">=</span> <span class="dt">Product</span> (x <span class="op">*</span> y)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> (<span class="dt">Num</span> a) <span class="ot">=&gt;</span> <span class="dt">Monoid</span> (<span class="dt">Product</span> a) <span class="kw">where</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mempty</span> <span class="ot">=</span> <span class="dt">Product</span> <span class="dv">1</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="fu">foldMap</span> [(<span class="dt">Sum</span> <span class="dv">1</span>)<span class="op">..</span>(<span class="dt">Sum</span> <span class="dv">10</span>)] <span class="op">&lt;&gt;</span> <span class="dt">Sum</span> <span class="dv">5</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
+<p>There is a bit of boilerplate involved in defining the newtypes and corresponding instances, but what is hard to swallow is that quite a bit of boilerplate has to be included at <em>every single use site</em>.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>If Haskell had local instances, this would not be an issue since we would not be forced to commit to a single instance and could just tell the compiler the instance we want without having to constantly wrap and unwrap everything.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<h2 id="introducing-dict">Introducing <code>Dict</code></h2>
+<p>GHC uses a technique called <em>dictionary passing</em> to compile typeclass dictionaries. This means that in Core (GHC’s intermediate language), <code>=&gt;</code> is turned into <code>-&gt;</code>. In other words, <em>constraints become arguments</em>, called <em>dictionaries</em>.</p>
+<p>Why is that useful to know? Well, while there is no way to directly access or construct these dictionaries, we <em>can</em> reify them with <code>Dict</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Dict</span> (<span class="ot">c ::</span> <span class="dt">Constraint</span>) <span class="kw">where</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Dict</span><span class="ot"> ::</span> c <span class="ot">=&gt;</span> <span class="dt">Dict</span> c</span></code></pre></div>
+<p>Because the constraint <code>c</code> appears in the type signature of the <code>Dict</code> constructor, the constructor stores the corresponding dictionary, and whenever it is scrutinized in a pattern match, the constraint is made available.</p>
+<p>Unfortunately, even with <code>Dict</code>, there is no way to construct a dictionary without defining an instance first.</p>
+<p>The only way to construct a ‘local’ instance then is to define an instance for a newtype wrapper, but if we create a Dict from that instance, we cannot use the newtype <code>Dict</code> for our original type, because <code>Dict (Monoid Int)</code> and <code>Dict (Monoid (Sum Int))</code> are entirely separate types to the typechecker.</p>
+<p>We hit quite the wall there. We know we could use the Dict for our newtype, and we know it would be safe<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> because newtypes are erased at runtime, but the typechecker doesn’t allow us to use a newtype Dict to get an instance for the original type.</p>
+<p>If there was just some way to bypass the typechecker…</p>
+<h2 id="i-solemnly-swear-i-am-up-to-no-good">I solemnly swear I am up to no good</h2>
+<p>Luckily for us: there is!</p>
+<p><code>unsafeCoerce :: forall a b. a -&gt; b</code> lets us bypass the typechecker by treating a value of <em>any</em> (lifted) type as a value of <em>any other</em> (lifted) type.</p>
+<p>This is probably one of the most dangerous, if not <em>the</em> most dangerous function in GHC’s arsenal. If you’re not careful, you can easily end up with segmentation faults.</p>
+<p>We know what we’re doing though, so let’s try it out!</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">monoidSumDict ::</span> <span class="dt">Dict</span> (<span class="dt">Monoid</span> (<span class="dt">Sum</span> <span class="dt">Int</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>monoidSumDict <span class="ot">=</span> <span class="dt">Dict</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="ot">monoidIntDict ::</span> <span class="dt">Dict</span> (<span class="dt">Monoid</span> <span class="dt">Int</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>monoidIntDict <span class="ot">=</span> unsafeCoerce monoidSumDict</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- If we didn&#39;t include the type signature, GHC would be confused about the type of number we&#39;re using</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="kw">case</span> monoidIntDict <span class="kw">of</span> <span class="dt">Dict</span> <span class="ot">-&gt;</span> fold [<span class="dv">1</span><span class="op">..</span><span class="dv">10</span>] <span class="op">&lt;&gt;</span> (<span class="dv">5</span><span class="ot"> ::</span> <span class="dt">Int</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
+<p>Perfect! We just created an instance of <code>Monoid Int</code>, that only exists if we pattern match on <code>monoidIntDict</code>. This sounds a lot like local instances to me.</p>
+<h2 id="lets-simplify-this">Let’s simplify this</h2>
+<p>What we have so far is already pretty cool, but having to write out a pattern match every time is a bit inconvenient.</p>
+<p>Fortunately, we can easily factor out the pattern match by turning it into a function.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withDict ::</span> <span class="dt">Dict</span> c <span class="ot">-&gt;</span> (c <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>withDict d x <span class="ot">=</span> <span class="kw">case</span> d <span class="kw">of</span> <span class="dt">Dict</span> <span class="ot">-&gt;</span> x</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> withDict monoidIntDict <span class="op">$</span> fold [<span class="dv">1</span><span class="op">..</span><span class="dv">10</span>] <span class="op">&lt;&gt;</span> (<span class="dv">5</span><span class="ot"> ::</span> <span class="dt">Int</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
+<p>That <code>(c =&gt; a)</code> argument might look a bit strange, but this is exactly what we’re trying to do: Take a value or function with a constraint and remove that constraint by inserting the instance stored in our <code>Dict</code>.</p>
+<p>We can do even better. The only way to construct one of our ‘local’ Dicts is to create a <code>Dict</code> for a newtype and cast that to a <code>Dict</code> for the original type using <code>unsafeCoerce</code>, but users of our library really shouldn’t have to write their own <code>Dict</code> definition, let alone use <code>unsafeCoerce</code>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withLocal ::</span> <span class="kw">forall</span> c1 c2 d<span class="op">.</span> c1 <span class="ot">=&gt;</span> (c2 <span class="ot">=&gt;</span> d) <span class="ot">-&gt;</span> d</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>withLocal x <span class="ot">=</span> <span class="kw">case</span> c2Dict <span class="kw">of</span> <span class="dt">Dict</span> <span class="ot">-&gt;</span> x</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">where</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="ot">        c1Dict ::</span> <span class="dt">Dict</span> c1</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        c1Dict <span class="ot">=</span> <span class="dt">Dict</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="ot">        c2Dict ::</span> <span class="dt">Dict</span> c2</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        c2Dict <span class="ot">=</span> unsafeCoerce c1Dict </span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> withLocal <span class="op">@</span>(<span class="dt">Monoid</span> (<span class="dt">Sum</span> <span class="dt">Int</span>)) <span class="op">@</span>(<span class="dt">Monoid</span> <span class="dt">Int</span>) <span class="op">$</span> fold [<span class="dv">1</span><span class="op">..</span><span class="dv">10</span>] <span class="op">&lt;&gt;</span> (<span class="dv">5</span><span class="ot"> ::</span> <span class="dt">Int</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
+<p>Now, all that users have to do is supply the right type applications and <code>withLocal</code> is going to do everything else for them. Nice!</p>
+<h2 id="hey-google-whats-a-segfault">Hey Google, what’s a segfault?</h2>
+<div class="sourceCode" id="cb8"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> withLocal <span class="op">@</span>(<span class="dt">Eq</span> <span class="dt">Bool</span>) <span class="op">@</span>(<span class="dt">Num</span> <span class="dt">Int</span>) <span class="op">$</span> (<span class="op">-</span><span class="dv">1</span><span class="ot"> ::</span> <span class="dt">Int</span>) <span class="op">+</span> <span class="dv">2</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>fish<span class="op">:</span> <span class="dt">Job</span> <span class="dv">1</span>, &#39;ghci unsafeCoerceDict<span class="op">.</span>hs&#39; terminated by signal <span class="dt">SIGSEGV</span> (<span class="dt">Address</span> boundary <span class="fu">error</span>)</span></code></pre></div>
+<p>Oh no<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>…</p>
+<p>We just used <code>unsafeCoerce</code> to cast a <code>Dict (Eq Bool)</code> to a <code>Dict (Num Int)</code>. We really shouldn’t be able to do this.</p>
+<p>The issue here is that <code>withLocal</code> places no constraints on the — well — <em>constraints</em> (<code>c1</code> and <code>c2</code>). In reality, we need both constraints to contain the same typeclass and to only differ in the <em>argument</em> to that class.</p>
+<p>Let’s do that.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withLocal ::</span> <span class="kw">forall</span> c a b d<span class="op">.</span> (c a) <span class="ot">=&gt;</span> (c b <span class="ot">=&gt;</span> d) <span class="ot">-&gt;</span> d</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>withLocal x <span class="ot">=</span> <span class="kw">case</span> cbDict <span class="kw">of</span> <span class="dt">Dict</span> <span class="ot">-&gt;</span> x</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">where</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="ot">        caDict ::</span> <span class="dt">Dict</span> (c a)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>        caDict <span class="ot">=</span> <span class="dt">Dict</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="ot">        cbDict ::</span> <span class="dt">Dict</span> (c b)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        cbDict <span class="ot">=</span> unsafeCoerce caDict </span></code></pre></div>
+<p>Note that we did not change anything about the implementation. We just constrained its type signature.</p>
+<p>Unfortunately, <code>withLocal</code> can still segfault because there are still no constraints on <code>a</code> and <code>b</code>. We could, for instance, still try to convert a <code>Monoid String</code> to a <code>Monoid Int</code>.</p>
+<h2 id="why-did-this-even-work-before">Why did this even work before?</h2>
+<p>The reason why this function is safe on <code>Sum Int</code> and <code>Int</code> is that <code>Sum Int</code> is just a newtype wrapper over <code>Int</code>, and newtypes are completely erased at runtime. So a function of type <code>Sum Int -&gt; b</code> really becomes a function of type <code>Int -&gt; b</code> at runtime.</p>
+<p>Thus we can safely<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> cast it to <code>Int -&gt; b</code> using <code>unsafeCoerce</code>.</p>
+<p><code>String</code> and <code>Int</code> don’t have the same runtime representation, so we cannot safely cast <code>Dict (Monoid String)</code> to <code>Dict (Monoid Int)</code>.</p>
+<p>Fortunately for us, Haskell does actually provide a way to constrain a function to types with the same runtime representation: <code>Coercible</code>!</p>
+<p>If we adjust our function to include a <code>Coercible a b</code> constraint, we finally end up with a safe implementation that doesn’t segfault!</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withLocal ::</span> <span class="kw">forall</span> c a b d<span class="op">.</span> (c a, <span class="dt">Coercible</span> a b) <span class="ot">=&gt;</span> (c b <span class="ot">=&gt;</span> d) <span class="ot">-&gt;</span> d</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>withLocal x <span class="ot">=</span> <span class="kw">case</span> cbDict <span class="kw">of</span> <span class="dt">Dict</span> <span class="ot">-&gt;</span> x</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">where</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="ot">        caDict ::</span> <span class="dt">Dict</span> (c a)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        caDict <span class="ot">=</span> <span class="dt">Dict</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="ot">        cbDict ::</span> <span class="dt">Dict</span> (c b)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        cbDict <span class="ot">=</span> unsafeCoerce caDict </span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> withLocal <span class="op">@</span><span class="dt">Monoid</span> <span class="op">@</span>(<span class="dt">Sum</span> <span class="dt">Int</span>) <span class="op">@</span><span class="dt">Int</span> <span class="op">$</span> fold [<span class="dv">1</span><span class="op">..</span><span class="dv">10</span>] <span class="op">&lt;&gt;</span> (<span class="dv">5</span><span class="ot"> ::</span> <span class="dt">Int</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
+<p>Note that we still had to use <code>unsafeCoerce</code> instead of <code>coerce</code>. Just because <code>a</code> can be coerced to <code>b</code>, doesn’t mean GHC will allow you to cast <code>Dict (c a)</code> to <code>Dict (c b)</code>.</p>
+<h2 id="expanding">Expanding</h2>
+<p>What we have so far is already pretty cool, but we can do even better.</p>
+<p>So far, all our local instances were limited by us having to write an instance for a newtype wrapper and so our instances could not include entirely arbitrary functions.</p>
+<p>We couldn’t, for example, declare a local function depending on a local variable and use that in an instance, because instances have to be written at the top level and therefore can’t include local variables.</p>
+<p>Fortunately, by selling a bit more of our soul to the type checker, we can work around this limitation!</p>
+<p>At runtime, dictionaries (not <code>Dict</code>s) are really just regular data types, so there is no reason, why we shouldn’t be able to fake them with <code>unsafeCoerce</code>.</p>
+<p>Note, that <code>Dict</code> actually stores the runtime dictionary as a lifted field, so if we want to coerce to <code>Dict</code>, we need to add a layer of indirection.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">FakeDict</span> a <span class="ot">=</span> <span class="dt">FakeDict</span> a</span></code></pre></div>
+<p>Now for the runtime dictionary, let’s look at the definition of the <code>Eq</code> typeclass.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Eq</span> a <span class="kw">where</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  (==) ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (/=) ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="ot">{-# MINIMAL (==) | (/=) #-}</span></span></code></pre></div>
+<p><code>Eq</code> has two methods <code>(==)</code> and <code>(/=)</code>, so our datatype also has to have two fields with matching types.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">EqDict</span> a <span class="ot">=</span> <span class="dt">EqDict</span> {</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="ot">        _eq  ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    ,<span class="ot">   _neq ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+<p>Now we need a function to make <code>unsafeCoere</code> a little less unsafe.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withFakeDictUnsafe ::</span> <span class="kw">forall</span> c d a<span class="op">.</span> d <span class="ot">-&gt;</span> (c <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>withFakeDictUnsafe d x <span class="ot">=</span> <span class="kw">case</span> unsafeCoerce (<span class="dt">FakeDict</span> d)<span class="ot"> ::</span> <span class="dt">Dict</span> c <span class="kw">of</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Dict</span> <span class="ot">-&gt;</span> x</span></code></pre></div>
+<p>This already works for simple classes like <code>Eq</code>, but right now we can’t handle classes with superclasses like <code>Monoid</code>, because we have no way of storing the superclass dictionary in our fake dictionary.</p>
+<p>In order to include the dictionary, we have to expand our <code>MonoidDict</code> to a GADT.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">MonoidDict</span> a <span class="kw">where</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">MonoidDict</span><span class="ot"> ::</span> <span class="dt">Semigroup</span> a <span class="ot">=&gt;</span> {</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="ot">        _mempty  ::</span> a</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    ,<span class="ot">   _mappend ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    ,<span class="ot">   _mconcat ::</span> [a] <span class="ot">-&gt;</span> a </span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    } <span class="ot">-&gt;</span> <span class="dt">MonoidDict</span> a</span></code></pre></div>
+<p>And… that’s it!</p>
+<p>We can now actually write useful functions that we couldn’t just emulate by wrapping everything in a newtype.</p>
+<p>As an example, let’s consider a function that (locally) implements a <code>Monoid</code> instance for a type, which only implements <code>Semigroup</code>, based on a provided default argument for <code>mempty</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ot">withSemigroupAsMonoid ::</span> <span class="kw">forall</span> a b<span class="op">.</span> <span class="dt">Semigroup</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> (<span class="dt">Monoid</span> a <span class="ot">=&gt;</span> b) <span class="ot">-&gt;</span> b</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>withSemigroupAsMonoid d <span class="ot">=</span> withFakeDictUnsafe <span class="op">@</span>(<span class="dt">Monoid</span> a) (<span class="dt">MonoidDict</span> {</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>        _mempty  <span class="ot">=</span> d</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    ,   _mappend <span class="ot">=</span> (<span class="op">&lt;&gt;</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    ,   _mconcat <span class="ot">=</span> <span class="fu">foldr</span> (<span class="op">&lt;&gt;</span>) d</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    })</span></code></pre></div>
+<p>We couldn’t use a newtype instance, since <code>withSemigroupAsMonoid</code> uses the function parameter <code>d</code> in its instance definition.</p>
+<h2 id="template-haskell">Template Haskell</h2>
+<p>Writing all these Dict types by hand is not just annoying, but also quite dangerous because they are not automatically kept in sync with the corresponding type classes, so if one of those changes and we forget to update the Dict, the types are not actually compatible anymore.</p>
+<p>We can use some TemplateHaskell to automate the process and (hopefully) avoid further segfaults.</p>
+<p>My experience with TemplateHaskell is pretty limited, so I’m not going to pretend like this is a great implementation.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ot">makeDict ::</span> <span class="dt">Name</span> <span class="ot">-&gt;</span> <span class="dt">Q</span> [<span class="dt">Dec</span>]</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>makeDict cname <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    reify cname <span class="op">&gt;&gt;=</span> \<span class="kw">case</span> <span class="co">-- (1)</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">ClassI</span> cdec is <span class="ot">-&gt;</span> <span class="kw">case</span> cdec <span class="kw">of</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>            <span class="dt">ClassD</span> cxt cname tvs _ meths <span class="ot">-&gt;</span> <span class="fu">pure</span> [</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>                        dataCon [] dname tvs <span class="dt">Nothing</span> [<span class="dt">ForallC</span> (<span class="fu">map</span> (addSpecificity <span class="dt">SpecifiedSpec</span>) tvs) cxt </span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>                            <span class="op">$</span> <span class="dt">RecGadtC</span> [dname] (<span class="fu">map</span> methodToVarBangType meths) appliedFakeType] [] <span class="co">-- (2)</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>                    ]</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>                <span class="kw">where</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>                    dataCon <span class="ot">=</span> <span class="kw">case</span> (meths, cxt) <span class="kw">of</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>                        ([_], []) <span class="ot">-&gt;</span> \cxt name tvs k [cs] ds <span class="ot">-&gt;</span> <span class="dt">NewtypeD</span> cxt name tvs k cs ds <span class="co">-- (4)</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>                        _ <span class="ot">-&gt;</span> <span class="dt">DataD</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>                    dname <span class="ot">=</span> mkName <span class="op">$</span> nameBase cname <span class="op">&lt;&gt;</span> <span class="st">&quot;Dict&quot;</span> <span class="co">-- (3)</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>                    </span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>                    methodToVarBangType (<span class="dt">SigD</span> n t) <span class="ot">=</span> (mkName (<span class="st">&quot;_&quot;</span> <span class="op">&lt;&gt;</span> nameBase n), <span class="dt">Bang</span> <span class="dt">SourceNoUnpack</span> <span class="dt">NoSourceStrictness</span>, t)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>                    </span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>                    appliedFakeType  <span class="ot">=</span> <span class="fu">foldl</span> <span class="dt">AppT</span> (<span class="dt">ConT</span> dname) (<span class="fu">map</span> (<span class="dt">VarT</span> <span class="op">.</span> tyVarName) tvs)</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>                    appliedClassType <span class="ot">=</span> <span class="fu">foldl</span> <span class="dt">AppT</span> (<span class="dt">ConT</span> cname) (<span class="fu">map</span> (<span class="dt">VarT</span> <span class="op">.</span> tyVarName) tvs)</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>                    addSpecificity s (<span class="dt">PlainTV</span> n _) <span class="ot">=</span> <span class="dt">PlainTV</span> n s</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>                    addSpecificity s (<span class="dt">KindedTV</span> n _ k) <span class="ot">=</span> <span class="dt">KindedTV</span> n s k</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>                    tyVarName (<span class="dt">PlainTV</span> n _) <span class="ot">=</span> n</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>                    tyVarName (<span class="dt">KindedTV</span> n _ _) <span class="ot">=</span> n</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>            _ <span class="ot">-&gt;</span> <span class="fu">fail</span> <span class="op">$</span> <span class="st">&quot;Not a class: &quot;</span> <span class="op">&lt;&gt;</span> <span class="fu">show</span> cname</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>        _ <span class="ot">-&gt;</span> <span class="fu">fail</span> <span class="op">$</span> <span class="st">&quot;Not a class: &quot;</span> <span class="op">&lt;&gt;</span> <span class="fu">show</span> cname</span></code></pre></div>
+<p>The important steps are these:</p>
+<ol type="1">
+<li>We get the class definition using <code>reify</code></li>
+<li>We can use that definition to construct a record GADT (<code>RecGadtC</code>) with one field for every class method.</li>
+<li>The new GADT is called <code>&lt;ClassName&gt;Dict</code>.</li>
+<li>If there is only a single method and no superclass, we construct a newtype instead. Note that this step is not just an optimization, but absolutely crucial, since a <code>data</code> constructor has one more level of indirection than a newtype, and confusing the two would lead to a segfault.</li>
+</ol>
+<p>We actually get another benefit from generating our instance. Since we know, that using <code>withFakeDictUnsafe</code> with our generated <code>MonoidDict</code> is safe, we can use a (non-exported) type class and a function <code>withFakeDict</code> to constrain arguments to <em>safe</em> (i.e. generated) dictionaries.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">FakeDictFor</span> (<span class="ot">c ::</span> <span class="dt">Constraint</span>) (<span class="ot">d ::</span> <span class="dt">Type</span>) <span class="op">|</span> d <span class="ot">-&gt;</span> c</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="ot">withFakeDict ::</span> <span class="kw">forall</span> d c a<span class="op">.</span> <span class="dt">FakeDictFor</span> c d <span class="ot">=&gt;</span> d <span class="ot">-&gt;</span> (c <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>withFakeDict <span class="ot">=</span> withFakeDictUnsafe</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="ot">makeDict ::</span> <span class="dt">Name</span> <span class="ot">-&gt;</span> <span class="dt">Q</span> [<span class="dt">Dec</span>]</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>makeDict cname <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">{- ... -}</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    [d|instance FakeDictFor $(pure appliedClassType) $(pure appliedFakeType)|]</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">{- ... -}</span></span></code></pre></div>
+<h2 id="incoherence">Incoherence</h2>
+<p>Unfortunately, both <code>withLocal</code> and <code>withFakeDictUnsafe</code> have a pretty serious flaw. Usually, whenever we use a typeclass method in Haskell, there are essentially two possibilities: either <em>no</em> instance exists or there is <em>exactly one</em> and the compiler picks that one. This is called <em>Coherence</em> and is also the reason why all in-scope typeclass instances are always exported from a module.</p>
+<p>The issue with our functions is that in case there is already an instance for the typeclass, they introduce a second instance and break the compiler’s Coherence assumption.</p>
+<p>As an example, let’s say we want to introduce a local instance for <code>Show Int</code>. If we do this, using <code>withLocal</code><a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a>, which instance is the compiler going to pick? Let’s find out!</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">FancyShow</span> a <span class="ot">=</span> <span class="dt">FancyShow</span> a</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Show</span> (<span class="dt">FancyShow</span> a) <span class="kw">where</span> </span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">show</span> (<span class="dt">FancyShow</span> x) <span class="ot">=</span> <span class="st">&quot;⭐&quot;</span> <span class="op">&lt;&gt;</span> <span class="fu">show</span> x <span class="op">&lt;&gt;</span> <span class="st">&quot;⭐&quot;</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> withLocal <span class="op">@</span><span class="dt">Show</span> <span class="op">@</span>(<span class="dt">FancyShow</span> <span class="dt">Int</span>) <span class="op">@</span><span class="dt">Int</span> <span class="op">$</span> <span class="fu">print</span> (<span class="dv">5</span><span class="ot"> ::</span> <span class="dt">Int</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> ghc unsafeCoerceDict.hs <span class="kw">&amp;&amp;</span> <span class="ex">./unsafeCoerceDict</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="ex">[1</span> of 1] Compiling Main             <span class="er">(</span> <span class="ex">unsafeCoerceDict.hs,</span> unsafeCoerceDict.o <span class="kw">)</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Linking</span> unsafeCoerceDict ...</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="ex">⭐5⭐</span></span></code></pre></div>
+<p>Nice! It seems like we can override instances using <code>withLocal</code>. Let’s try that with optimizations</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> ghc <span class="at">-O</span> unsafeCoerceDict.hs <span class="kw">&amp;&amp;</span> <span class="ex">./unsafeCoerceDict</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="ex">[1</span> of 1] Compiling Main             <span class="er">(</span> <span class="ex">unsafeCoerceDict.hs,</span> unsafeCoerceDict.o <span class="kw">)</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Linking</span> unsafeCoerceDict ...</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="ex">5</span></span></code></pre></div>
+<p>Oh no… optimizations can change the semantics of our program by picking the original instance, that we tried to override. We really don’t want that.</p>
+<p>To make matters worse, there is no way to prevent incoherent usage without having to include Template Haskell at call sites, since there is no way to write a type like <code>Not (Eq a) =&gt; (Eq a =&gt; b) -&gt; b</code>.</p>
+<p>It’s not that bad though. As long as we make sure to never try to override existing instances, we are safe.</p>
+<h2 id="implicitparams">ImplicitParams</h2>
+<p><code>withFakeDict</code> might remind you of a different Haskell feature, namely <code>ImplicitParams</code>. And indeed, we can directly interoperate with <code>ImplicitParams</code> using <code>withFakeDict</code>.</p>
+<p>An implicit parameter constraint like</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ot">f ::</span> (<span class="op">?</span><span class="ot">x ::</span> <span class="dt">Int</span>) <span class="ot">=&gt;</span> <span class="dt">Int</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="op">?</span>x <span class="op">+</span> <span class="dv">1</span></span></code></pre></div>
+<p>is really just syntactic sugar for</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ot">f ::</span> (<span class="dt">IP</span> <span class="st">&quot;x&quot;</span> <span class="dt">Int</span>) <span class="ot">=&gt;</span> <span class="dt">Int</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> ip <span class="op">@</span><span class="st">&quot;x&quot;</span> <span class="op">+</span> <span class="dv">1</span></span></code></pre></div>
+<p>where IP is a regular type class defined in <code>GHC.Classes</code>.</p>
+<p>What’s really cool about this is that we can actually define an <code>IP</code> constraint using <code>withFakeDict</code>.</p>
+<p>So instead of</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="op">?</span>x <span class="ot">=</span> <span class="dv">5</span> <span class="kw">in</span> f</span></code></pre></div>
+<p>we can write</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>withFakeDict <span class="op">@</span>(<span class="dt">IPDict</span> <span class="st">&quot;x&quot;</span> <span class="dt">Int</span>) (<span class="dt">IPDict</span> {_ip <span class="ot">=</span> <span class="dv">5</span>}) f</span></code></pre></div>
+<p>and get the exact same behavior!</p>
+<p>This means that <code>withFakeDict</code> is strictly more powerful than ImplicitParams, but it also shares ImplicitParams’ <a href="https://chrisdone.com/posts/whats-wrong-with-implicitparams/">somewhat famous</a> <a href="https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/implicit_parameters.html#implicit-parameters-and-polymorphic-recursion">issues</a>.</p>
+<h2 id="configurable-trace">Configurable trace</h2>
+<p><code>Debug.Trace.trace</code> can be a very useful function for quick debugging. Want to know what this intermediate expression evaluates to? Just write it to stderr using <code>trace</code>. Want to know what values this function is called with? You can use trace for that.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ot">f ::</span> <span class="dt">A</span> <span class="ot">-&gt;</span> <span class="dt">B</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>f x <span class="op">|</span> trace (<span class="st">&quot;x = &quot;</span> <span class="op">&lt;&gt;</span> <span class="fu">show</span> x) <span class="dt">False</span> <span class="ot">=</span> <span class="fu">error</span> <span class="st">&quot;unreachable&quot;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>f x <span class="ot">=</span> <span class="op">...</span></span></code></pre></div>
+<p>Unfortunately, <code>trace</code> is not really suited for slightly more permanent tracing, since there is no way to turn it off or to change the target it writes to.</p>
+<p>If we wanted to improve trace, we would have to somehow pass a configuration without <em>actually</em> passing it manually to every single function. Sounds a lot like type classes to me!</p>
+<p>Let’s try that. We should also probably use <code>Text</code> instead of <code>String</code>, while we’re at it.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Trace</span> <span class="kw">where</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    trace ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span></code></pre></div>
+<p>To make filtering easier, we should probably also accept some kind of trace level. We could just accept an integer, but parameterizing our class over the type of the trace level is more general.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Trace</span> lvl <span class="kw">where</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    trace ::</span> lvl <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span></code></pre></div>
+<p>Cool. Functions that want to perform logging now need an additional <code>Trace lvl</code> constraint, that supplies the actual implementation.</p>
+<p>How do we pick the implementation though? If you’ve paid attention so far, the answer should be obvious: We construct a fake dictionary using <code>withFakeDict</code>.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Trace</span> lvl <span class="kw">where</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    trace ::</span> lvl <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>makeDict &#39;<span class="dt">&#39;Trace</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="ot">runTraceStderr ::</span> (<span class="dt">Trace</span> lvl <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>runTraceStderr <span class="ot">=</span> withFakeDict (<span class="dt">TraceDict</span> {</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>        _trace _ <span class="ot">=</span> Debug.Trace.trace</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a><span class="ot">ignoreTrace ::</span> (<span class="dt">Trace</span> lvl <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>ignoreTrace <span class="ot">=</span> withFakeDict (<span class="dt">TraceDict</span> {</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>    _trace _ _ x <span class="ot">=</span> x</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>One issue that might still come up is that someone could theoretically define a top-level instance of <code>Trace lvl</code>, which would introduce incoherence and completely break our system. To prevent that, we can hide the actual implementation in a class <code>_Trace</code>, that we don’t actually export. We can then define a type synonym <code>Trace</code> that we <em>do</em> export. This way, users of our library can still reference Trace through our type synonym, but cannot define top-level instances since instances cannot be defined for type synonyms of type classes.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> _Trace lvl <span class="kw">where</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    trace ::</span> lvl <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>makeDict &#39;&#39;_Trace</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Trace</span> <span class="ot">=</span> _Trace</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a><span class="ot">runTraceStderr ::</span> (<span class="dt">Trace</span> lvl <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>runTraceStderr <span class="ot">=</span> withFakeDict (<span class="dt">Trace_Dict</span> {</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>        _trace _ <span class="ot">=</span> Debug.Trace.trace</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a><span class="ot">ignoreTrace ::</span> (<span class="dt">Trace</span> lvl <span class="ot">=&gt;</span> a) <span class="ot">-&gt;</span> a</span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>ignoreTrace <span class="ot">=</span> withFakeDict (<span class="dt">Trace_Dict</span> {</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>    _trace _ _ x <span class="ot">=</span> x</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>Nice! We just defined a fairly extensible little tracing library in less than 20 lines of code.</p>
+<p>Here is why this is a good application of fake local instances</p>
+<ul>
+<li>There is no reason to manually implement the <code>Trace</code> type class, so we were able to hide it completely and fully prevent incoherence.</li>
+<li>In case we made a mistake or this whole approach is fundamentally flawed and GHC decides to pick the wrong instance, nothing major breaks. (You can never be entirely sure with <code>unsafeCoerce</code> tricks like this)</li>
+<li>This is really easy to implement, and much less limited than most alternative approaches (Logging monads/effects, global <code>IORef</code>s, …)</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>Now, what did we learn from all of this?</p>
+<ul>
+<li>It is possible to transfer instances between newtypes.</li>
+<li>This approach can be expanded to allow the inclusion of arbitrary functions as instance methods.</li>
+<li>All segfaults stemming from non-unsafe functions can be avoided and it is possible to generate most boilerplate.</li>
+<li>Incoherence, stemming from multiple instances being available at once, is an issue.</li>
+<li>ImplicitParams can be emulated with local instances.</li>
+<li>A tiny extensible tracing library is a pretty cool application of local instances.</li>
+</ul>
+<p>Does this mean, you should throw all your newtypes out of the window? No.</p>
+<p>Does this mean, you should use the code from this article in production? Probably not. You should really know what you’re doing if you want to use anything in production that is based on <code>unsafeCoerce</code>. That said, if you want to try this out for yourself, the code is available in a <a href="https://github.com/Innf107/fakedict">small library on github</a>, including <code>trace</code>.</p>
+<p>Ultimately, I hope that you learned a nice little trick today. You never know when it might come in handy.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>In this particular example, most boilerplate could be eliminated by using <code>Sum</code>’s <code>Num</code> instance, but in most real scenarios it’s unfortunately not that simple.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>There are very good reasons why Haskell doesn’t have local instances, but we’ll get to that.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>Well… we’ll see about that.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>I told you, unsafeCoerce was dangerous…<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p><em>safe</em> here just means that it doesn’t segfault. We’ll get to other meanings of safe, don’t worry!<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>Feel free to <a href="https://github.com/Innf107/fakedict/tree/main/src/Fakedict/TH.hs">submit a pull request</a> if you would like to write a better implementation<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>I did not use <code>withFakeDict</code> here, since <code>Show</code> has a few additional methods that we would have had to implement manually<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+
+            <script src="/js/main.js"></script>
+        </article>
+    </body>
+</html>

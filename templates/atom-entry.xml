@@ -1,0 +1,10 @@
+<entry>
+    <title>{{title}}</title>
+    <link rel="alternate">{{link}}</link>
+    <published>{{published}</published>
+    <updated>{{updated}}</updated>
+    <author>
+        <name>Finn Schneider</name>
+    </author>
+    <content type="html">{{content}}</content>
+</entry>

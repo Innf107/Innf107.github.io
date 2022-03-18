@@ -1,0 +1,286 @@
+body {
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-color-main);
+  background-color: var(--bg-color-main);
+}
+body.dark {
+  --text-color-main: white;
+}
+
+body:not(.dark) {
+  --text-color-main: black;
+}
+
+body.dark {
+  --bg-color-main: #2b2b2b;
+}
+
+body:not(.dark) {
+  --bg-color-main: white;
+}
+
+h1 {
+  font-size: 66px;
+  font-weight: 700;
+}
+@media screen and (max-width: 768px) {
+  h1 {
+    font-size: 50px;
+  }
+}
+
+h1, h2 {
+  text-transform: uppercase;
+  margin-bottom: 0;
+}
+
+article, main {
+  margin-left: auto;
+  margin-right: auto;
+  width: 75%;
+}
+article > h1, main > h1 {
+  margin-top: 1rem;
+  overflow: auto;
+}
+@media screen and (max-width: 768px) {
+  article, main {
+    width: 90%;
+  }
+}
+
+a {
+  color: var(--color-link);
+}
+body.dark {
+  --color-link: #ff9900;
+}
+
+body:not(.dark) {
+  --color-link: #ff4800;
+}
+
+a.footnote-ref {
+  text-decoration: none;
+}
+
+pre, .sourceCode {
+  background-color: var(--bg-color-code);
+  overflow: auto;
+}
+body.dark {
+  --bg-color-code: #393939;
+}
+
+body:not(.dark) {
+  --bg-color-code: #e6e6e6;
+}
+
+code:not(.sourceCode) {
+  color: var(--inline-code-color);
+}
+body.dark {
+  --inline-code-color: #e60000;
+}
+
+body:not(.dark) {
+  --inline-code-color: #a00000;
+}
+
+div.sourceCode {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.haskell .ot, .haskell .op, .haskell .kw {
+  color: var(--haskell-kw);
+}
+body.dark {
+  --haskell-kw: red;
+}
+
+body:not(.dark) {
+  --haskell-kw: #7a0000;
+}
+
+.haskell .co {
+  color: var(--haskell-co);
+}
+body.dark {
+  --haskell-co: #919191;
+}
+
+body:not(.dark) {
+  --haskell-co: #888888;
+}
+
+.haskell .dt {
+  color: var(--haskell-dt);
+}
+body.dark {
+  --haskell-dt: #ff9900;
+}
+
+body:not(.dark) {
+  --haskell-dt: #a06000;
+}
+
+.haskell .dv {
+  color: var(--haskell-dv);
+}
+body.dark {
+  --haskell-dv: #ff0000;
+}
+
+body:not(.dark) {
+  --haskell-dv: #d10000;
+}
+
+.haskell .st {
+  color: var(--haskell-st);
+}
+body.dark {
+  --haskell-st: #00b928;
+}
+
+body:not(.dark) {
+  --haskell-st: #009620;
+}
+
+/* navbar */
+.navbar {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.5fr 0.5fr;
+  background-color: var(--navbar-bg);
+}
+@media screen and (max-width: 768px) {
+  .navbar {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 0.5fr 0.5fr;
+  }
+  .navbar .navigation.middle {
+    display: none;
+  }
+  .navbar > * {
+    margin: 0;
+    border-bottom: #2e2e2e solid 2px;
+  }
+}
+body.dark {
+  --navbar-bg: #000000;
+}
+
+body:not(.dark) {
+  --navbar-bg: #000000;
+}
+
+.navbar > * {
+  padding: 1rem;
+}
+.navbar * {
+  color: var(--navbar-fg);
+  font-weight: bold;
+  text-decoration: none;
+}
+body.dark {
+  --navbar-fg: #ffffff;
+}
+
+body:not(.dark) {
+  --navbar-fg: #ffffff;
+}
+
+.navbar ul > * {
+  display: inline-block;
+}
+
+.navigation {
+  text-align: center;
+  vertical-align: middle;
+}
+.navigation > .header {
+  font-size: 250%;
+  font-weight: bolder;
+}
+.navigation *:not(.header) {
+  font-size: 150%;
+}
+
+.dark-mode {
+  border: none;
+  padding: 5px;
+  background-color: var(--dm-bg);
+  color: var(--dm-fg);
+}
+body.dark {
+  --dm-bg: #393939;
+}
+
+body:not(.dark) {
+  --dm-bg: white;
+}
+
+body.dark {
+  --dm-fg: white;
+}
+
+body:not(.dark) {
+  --dm-fg: #393939;
+}
+
+/* /navbar */
+/*index*/
+.index > h1 {
+  text-align: center;
+}
+
+.post-summaries * {
+  font-size: 33px;
+  text-transform: uppercase;
+  text-decoration: none;
+  font-weight: bold;
+  color: var(--summary-fg);
+}
+body.dark {
+  --summary-fg: white;
+}
+
+body:not(.dark) {
+  --summary-fg: black;
+}
+
+.post-summaries > li {
+  list-style: none;
+  padding-bottom: 2rem;
+  overflow: hidden;
+}
+.post-summaries a:hover {
+  color: var(--summary-hover);
+}
+body.dark {
+  --summary-hover: red;
+}
+
+body:not(.dark) {
+  --summary-hover: #a00000;
+}
+
+.post-summaries .date {
+  float: right;
+}
+
+/* /index */
+/* about */
+.about h1 {
+  text-align: center;
+}
+
+article.about {
+  width: 50%;
+}
+
+/* /about */
+
+/*# sourceMappingURL=post.css.map */

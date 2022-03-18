@@ -1,0 +1,7 @@
+<item>
+    <title>{{title-no-code}}</title>
+    <link>{{link}}</link>
+    <guid isPremaLink="true">{{link}}</guid>
+    <pubDate>{{pubDate}}</pubDate>
+    <description>{{content}}</description>
+</item>
