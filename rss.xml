@@ -3,8 +3,8 @@
         <title>Prophetlabs</title>
         <description>My Blog</description>
         <link>https://prophetlabs.de</link>
-        <pubDate>2 March 2022</pubDate>
-        <lastBuildDate>2 March 2022</lastBuildDate>
+        <pubDate>18 March 2022</pubDate>
+        <lastBuildDate>18 March 2022</lastBuildDate>
         <ttl>60</ttl>
         <item>
     <title> Faking Local Instances with unsafeCoerce Dict</title>

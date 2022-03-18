@@ -190,5 +190,5 @@
 (for-each build-post (get-posts #f))
 
 (build-index)
-(build-rss #:additional-fields (hash "pubDate" "2 March 2022" "lastBuildDate" "2 March 2022"))
+(build-rss #:additional-fields (hash "pubDate" "18 March 2022" "lastBuildDate" "18 March 2022"))
 (build-file "templates/about.html" "about.html")
