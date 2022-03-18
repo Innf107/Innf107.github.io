@@ -1,6 +1,6 @@
 <!--title: Faking Local Instances with <code>unsafeCoerce Dict</code>-->
-<!--date: 2 March 2022-->
-<!--pubDate:2022-3-2-->
+<!--date: 18 March 2022-->
+<!--pubDate:2022-3-18-->
 <!--reddit:https://www.reddit.com/Ihaventactuallyupdatedthelinkyetsorry-->
 When you first learned about Haskell's `Monoid` typeclass, you were probably quite surprised to find out that there is no instance for `Monoid Int` in `base`.
 
