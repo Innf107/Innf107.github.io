@@ -14,7 +14,7 @@ body:not(.dark) {
 }
 
 body.dark {
-  --bg-color-main: #2b2b2b;
+  --bg-color-main: rgb(43, 43, 43);
 }
 
 body:not(.dark) {
@@ -55,11 +55,11 @@ a {
   color: var(--color-link);
 }
 body.dark {
-  --color-link: #ff9900;
+  --color-link: rgb(255, 153, 0);
 }
 
 body:not(.dark) {
-  --color-link: #ff4800;
+  --color-link: rgb(255, 72, 0);
 }
 
 a.footnote-ref {
@@ -75,18 +75,18 @@ body.dark {
 }
 
 body:not(.dark) {
-  --bg-color-code: #e6e6e6;
+  --bg-color-code: rgb(230, 230, 230);
 }
 
 code:not(.sourceCode) {
   color: var(--inline-code-color);
 }
 body.dark {
-  --inline-code-color: #e60000;
+  --inline-code-color: rgb(230, 0, 0);
 }
 
 body:not(.dark) {
-  --inline-code-color: #a00000;
+  --inline-code-color: rgb(160, 0, 0);
 }
 
 div.sourceCode {
@@ -98,33 +98,33 @@ div.sourceCode {
   color: var(--haskell-kw);
 }
 body.dark {
-  --haskell-kw: red;
+  --haskell-kw: rgb(255, 0, 0);
 }
 
 body:not(.dark) {
-  --haskell-kw: #7a0000;
+  --haskell-kw: rgb(122, 0, 0);
 }
 
 .haskell .co {
   color: var(--haskell-co);
 }
 body.dark {
-  --haskell-co: #919191;
+  --haskell-co: rgb(145, 145, 145);
 }
 
 body:not(.dark) {
-  --haskell-co: #888888;
+  --haskell-co: rgb(136, 136, 136);
 }
 
 .haskell .dt {
   color: var(--haskell-dt);
 }
 body.dark {
-  --haskell-dt: #ff9900;
+  --haskell-dt: rgb(255, 153, 0);
 }
 
 body:not(.dark) {
-  --haskell-dt: #a06000;
+  --haskell-dt: rgb(160, 96, 0);
 }
 
 .haskell .dv {
@@ -135,18 +135,30 @@ body.dark {
 }
 
 body:not(.dark) {
-  --haskell-dv: #d10000;
+  --haskell-dv: rgb(209, 0, 0);
 }
 
 .haskell .st {
   color: var(--haskell-st);
 }
 body.dark {
-  --haskell-st: #00b928;
+  --haskell-st: rgb(0, 185, 40);
 }
 
 body:not(.dark) {
-  --haskell-st: #009620;
+  --haskell-st: rgb(0, 150, 32);
+}
+
+.multicode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media screen and (max-width: 768px) {
+  .multicode {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 5px;
+  }
 }
 
 /* navbar */
@@ -165,7 +177,7 @@ body:not(.dark) {
   }
   .navbar > * {
     margin: 0;
-    border-bottom: #2e2e2e solid 2px;
+    border-bottom: rgb(46, 46, 46) solid 2px;
   }
 }
 body.dark {
@@ -264,7 +276,7 @@ body.dark {
 }
 
 body:not(.dark) {
-  --summary-hover: #a00000;
+  --summary-hover: rgb(160, 0, 0);
 }
 
 .post-summaries .date {

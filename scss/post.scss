@@ -98,6 +98,16 @@ div.sourceCode{
 }
 
 
+.multicode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    @media screen and (max-width: 768px) {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 5px;
+    }
+}
+
 /* navbar */
 .navbar {
     display: grid;

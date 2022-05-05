@@ -1,0 +1,131 @@
+#!/usr/bin/env polaris
+
+# Library definitions. These should really be part of the stdlib
+let rec zip(xs, ys) = {
+    if xs == [] then
+        []
+    else if ys == [] then
+        []
+    else 
+        cons([head(xs), head(ys)], zip(tail(xs), tail(ys)))
+};
+
+let rec foldr(f, z, xs) = { 
+    if xs == [] then
+        z
+    else
+        f(head(xs), foldr(f, z, tail(xs)))
+};
+
+let rec for(xs, f) = {
+    if xs == [] then
+        ()
+    else {
+        f(head(xs));
+        for(tail(xs), f);  
+    }
+};
+
+let fst(t) = head(t);
+let snd(t) = head(tail(t));
+
+let rec find(needle, haystack) = {
+    if haystack == [] then
+        ()
+    else if fst(head(haystack)) == needle then
+        snd(head(haystack))
+    else 
+        find(needle, tail(haystack))
+};
+
+let append(xs, ys) = foldr (cons, ys, xs);
+
+
+# Actual build logic
+
+let extractTags(file) = {
+    let keys = lines(!grep "-Po" "(?<=<!--).+?(?=:)" file);
+    let values = lines(!grep "-Po" "(?<=:).+?(?=-->)" file);
+    zip(keys, values);
+};
+
+let replaceTags(tags, content) = {
+    foldr(\(tag, r) -> replace("{{" .. fst(tag) .. "}}", snd(tag), r), content, tags)
+};
+
+let escapeHTML(content) = {
+    let toReplace = 
+    [ ["<", "&lt;"]
+    , [">", "&gt;"]
+    , ["<!--.*?-->", ""]
+    ];
+
+    foldr(\(x, r) -> regexp_replace(fst(x), snd(x), r), content, toReplace)
+};
+
+let static_tags = [["header", !cat "static-html/header.html"]];
+
+let indexTags = [];
+
+let buildPage(path, template, tags) = {
+    print("Building page: " .. path);
+    let rendered_page = replaceTags(tags, !cat ("templates/" .. template));
+    
+    write_file(path, rendered_page)
+};
+
+let buildPost(name) = {
+    print("Building post: " .. name);
+    let markdownPath = "md/" .. name .. ".md";
+    let htmlPath = "posts/" .. name .. ".html";
+
+    let tags = extractTags(markdownPath);
+
+    let htmlContent = replaceTags(tags, !pandoc markdownPath);
+
+    let postTags = append(tags, 
+        [ ["header", !cat "static-html/header.html"]
+        , ["title-no-code", regexp_replace("<code>\(.+?\)</code>", "\1", find("title", tags))]
+        , ["body", htmlContent]
+        ]);
+
+    let renderedPost = replaceTags(postTags, !cat "templates/post.html");
+
+    write_file(htmlPath, renderedPost);
+
+    let additionalTags = 
+        [ ["content", escapeHTML(htmlContent)]
+        , ["link", "https://prophetlabs.de/posts/" .. name .. ".html"]
+        ];
+
+    indexTags = cons(append(additionalTags, postTags), indexTags);
+};
+
+let rec buildIndex(indexTags) = {
+    let summaryTemplate = !cat "templates/post-summary.html";
+    let summaries = foldr(\(tags, r) -> replaceTags(tags, summaryTemplate) .. r, "", indexTags);
+    buildPage("index.html", "index.html", append(static_tags, [["post-summaries", summaries]]))
+};
+
+let rec buildRSS(indexTags, pubDate) = {
+    let itemTemplate = !cat "templates/rss-item.xml";
+    let items = foldr(\(tags, r) -> replaceTags(tags, itemTemplate) .. r, "", indexTags);
+    buildPage("rss.xml", "rss.xml", append(static_tags, [["rss-items", items], ["pubDate", pubDate], ["lastBuildDate", pubDate]]))
+};
+
+let buildScss() = {
+    let files = lines(!find "scss/post.scss" "-name" "*.scss");
+    for(files, \file -> {
+        print("Building scss file: " .. file);
+        !sass file ("assets/" .. (!basename "-s" ".scss" file) .. ".css")
+    })
+};
+
+buildPost("unsafeCoerceDict");
+
+buildPage("about.html", "about.html", static_tags);
+
+buildIndex(indexTags);
+buildRSS(indexTags, "05-05-2022");
+
+buildScss();
