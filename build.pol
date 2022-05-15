@@ -1,7 +1,7 @@
 #!/usr/bin/env polaris
 
 # Library definitions. These should really be part of the stdlib
-let rec zip(xs, ys) = {
+let zip(xs, ys) = {
     if xs == [] then
         []
     else if ys == [] then
@@ -10,14 +10,14 @@ let rec zip(xs, ys) = {
         cons([head(xs), head(ys)], zip(tail(xs), tail(ys)))
 };
 
-let rec foldr(f, z, xs) = { 
+let foldr(f, z, xs) = { 
     if xs == [] then
         z
     else
         f(head(xs), foldr(f, z, tail(xs)))
 };
 
-let rec for(xs, f) = {
+let for(xs, f) = {
     if xs == [] then
         ()
     else {
@@ -29,7 +29,7 @@ let rec for(xs, f) = {
 let fst(t) = head(t);
 let snd(t) = head(tail(t));
 
-let rec find(needle, haystack) = {
+let find(needle, haystack) = {
     if haystack == [] then
         ()
     else if fst(head(haystack)) == needle then
@@ -98,16 +98,16 @@ let buildPost(name) = {
         , ["link", "https://prophetlabs.de/posts/" .. name .. ".html"]
         ];
 
-    indexTags = cons(append(additionalTags, postTags), indexTags);
+    indexTags := cons(append(additionalTags, postTags), indexTags);
 };
 
-let rec buildIndex(indexTags) = {
+let buildIndex(indexTags) = {
     let summaryTemplate = !cat "templates/post-summary.html";
     let summaries = foldr(\(tags, r) -> replaceTags(tags, summaryTemplate) .. r, "", indexTags);
     buildPage("index.html", "index.html", append(static_tags, [["post-summaries", summaries]]))
 };
 
-let rec buildRSS(indexTags, pubDate) = {
+let buildRSS(indexTags, pubDate) = {
     let itemTemplate = !cat "templates/rss-item.xml";
     let items = foldr(\(tags, r) -> replaceTags(tags, itemTemplate) .. r, "", indexTags);
     buildPage("rss.xml", "rss.xml", append(static_tags, [["rss-items", items], ["pubDate", pubDate], ["lastBuildDate", pubDate]]))
@@ -122,6 +122,7 @@ let buildScss() = {
 };
 
 buildPost("unsafeCoerceDict");
+buildPost("insttypes");
 
 buildPage("about.html", "about.html", static_tags);
 
