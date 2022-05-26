@@ -84,7 +84,6 @@ let buildScss() = {
 };
 
 buildPost("unsafeCoerceDict");
-buildPost("modules");
 
 buildPage("about.html", "about.html", static_tags);
 
