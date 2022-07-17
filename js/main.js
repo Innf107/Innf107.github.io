@@ -1,5 +1,3 @@
-console.log("test")
-
 let isDarkMode = false;
 
 function setDarkMode(darkMode){

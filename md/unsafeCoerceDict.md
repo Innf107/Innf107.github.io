@@ -39,7 +39,7 @@ instance (Num a) => Semigroup (Product a) where
 instance (Num a) => Monoid (Product a) where
     mempty = Product 1
 
-λ> foldMap [(Sum 1)..(Sum 10)] <> Sum 5
+λ> getSum $ foldMap [(Sum 1)..(Sum 10)] <> Sum 5
 60
 ```
 There is a bit of boilerplate involved in defining the newtypes and corresponding instances, but what is hard to swallow
