@@ -93,7 +93,7 @@ every time the Monoid instance is needed.</p>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> (<span class="dt">Num</span> a) <span class="ot">=&gt;</span> <span class="dt">Monoid</span> (<span class="dt">Product</span> a) <span class="kw">where</span></span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mempty</span> <span class="ot">=</span> <span class="dt">Product</span> <span class="dv">1</span></span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> getSum <span class="op">$</span> <span class="fu">foldMap</span> [(<span class="dt">Sum</span> <span class="dv">1</span>)<span class="op">..</span>(<span class="dt">Sum</span> <span class="dv">10</span>)] <span class="op">&lt;&gt;</span> <span class="dt">Sum</span> <span class="dv">5</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> getSum <span class="op">$</span> <span class="fu">foldMap</span> <span class="dt">Sum</span> [<span class="dv">1</span><span class="op">..</span><span class="dv">10</span>] <span class="op">&lt;&gt;</span> <span class="dt">Sum</span> <span class="dv">5</span></span>
 <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="dv">60</span></span></code></pre></div>
 <p>There is a bit of boilerplate involved in defining the newtypes and
 corresponding instances, but what is hard to swallow is that quite a bit
