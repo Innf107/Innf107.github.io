@@ -1,0 +1,272 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-color-main);
+  background-color: var(--bg-color-main);
+  --link-light: rgb(255, 72, 0);
+  --link-dark: rgb(255, 153, 0); }
+  body.dark {
+    --text-color-main: white; }
+  body:not(.dark) {
+    --text-color-main: black; }
+  body.dark {
+    --bg-color-main: #2b2b2b; }
+  body:not(.dark) {
+    --bg-color-main: white; }
+
+h1 {
+  font-size: 66px;
+  font-weight: 700; }
+  @media screen and (max-width: 768px) {
+    h1 {
+      font-size: 35px; } }
+h1, h2 {
+  text-transform: uppercase;
+  margin-bottom: 0; }
+
+article, main {
+  margin-left: auto;
+  margin-right: auto;
+  width: 75%; }
+  article > h1, main > h1 {
+    margin-top: 1rem;
+    overflow: auto; }
+  @media screen and (max-width: 768px) {
+    article, main {
+      width: 90%; } }
+a {
+  color: var(--color-link); }
+  body.dark {
+    --color-link: var(--link-dark); }
+  body:not(.dark) {
+    --color-link: var(--link-light); }
+  a.footnote-ref {
+    text-decoration: none; }
+
+pre, .sourceCode {
+  background-color: var(--bg-color-code);
+  overflow: auto; }
+  body.dark {
+    --bg-color-code: #393939; }
+  body:not(.dark) {
+    --bg-color-code: #e6e6e6; }
+
+code:not(.sourceCode) {
+  color: var(--inline-code-color); }
+  body.dark {
+    --inline-code-color: #e60000; }
+  body:not(.dark) {
+    --inline-code-color: #a00000; }
+
+div.sourceCode {
+  padding-left: 1rem;
+  padding-right: 1rem; }
+
+.sourceCode .ot, .sourceCode .op, .sourceCode .kw {
+  color: var(--haskell-kw); }
+  body.dark {
+    --haskell-kw: red; }
+  body:not(.dark) {
+    --haskell-kw: #7a0000; }
+
+.sourceCode .co {
+  color: var(--haskell-co); }
+  body.dark {
+    --haskell-co: #919191; }
+  body:not(.dark) {
+    --haskell-co: #888888; }
+
+.sourceCode .dt {
+  color: var(--haskell-dt); }
+  body.dark {
+    --haskell-dt: #ff9900; }
+  body:not(.dark) {
+    --haskell-dt: #a06000; }
+
+.sourceCode .dv {
+  color: var(--haskell-dv); }
+  body.dark {
+    --haskell-dv: #ff0000; }
+  body:not(.dark) {
+    --haskell-dv: #d10000; }
+
+.sourceCode .st {
+  color: var(--haskell-st); }
+  body.dark {
+    --haskell-st: #00b928; }
+  body:not(.dark) {
+    --haskell-st: #009620; }
+
+.sourceCode.polaris .dt {
+  color: var(--polaris-repl); }
+  body.dark {
+    --polaris-repl: #ff0000; }
+  body:not(.dark) {
+    --polaris-repl: #ff0000; }
+
+.multicode {
+  display: grid;
+  grid-template-columns: 1fr 1fr; }
+  @media screen and (max-width: 768px) {
+    .multicode {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 5px; } }
+/* The parent of the .lang span*/
+.lang-p {
+  margin-top: 0;
+  margin-bottom: 0;
+  background-color: var(--bg-color-code);
+  overflow: auto; }
+  .lang-p button {
+    background: none;
+    border: none; }
+    .lang-p button:active {
+      color: white; }
+
+.lang {
+  display: block;
+  float: right;
+  background-color: var(--lang-bg);
+  color: var(--lang-fg);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 5px;
+  border-top-left-radius: 50%;
+  border-bottom-left-radius: 5%;
+  border-bottom-right-radius: 5%;
+  border-top-right-radius: 5%; }
+  body.dark {
+    --lang-bg: #5e0101; }
+  body:not(.dark) {
+    --lang-bg: #ff5e49; }
+  body.dark {
+    --lang-fg: white; }
+  body:not(.dark) {
+    --lang-fg: black; }
+
+/* navbar */
+.navbar {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.5fr 0.5fr;
+  background-color: var(--navbar-bg); }
+  @media screen and (max-width: 768px) {
+    .navbar {
+      font-size: 80%;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 0.5fr 0.5fr; }
+      .navbar .navigation.middle {
+        display: none; }
+      .navbar > * {
+        margin: 0;
+        border-bottom: #2e2e2e solid 2px; } }
+  body.dark {
+    --navbar-bg: #000000; }
+  body:not(.dark) {
+    --navbar-bg: #000000; }
+  .navbar > * {
+    padding: 1rem; }
+    @media screen and (max-width: 768px) {
+      .navbar > * {
+        padding: 0.5rem; } }
+  .navbar * {
+    color: var(--navbar-fg);
+    font-weight: bold;
+    text-decoration: none; }
+    body.dark {
+      --navbar-fg: #ffffff; }
+    body:not(.dark) {
+      --navbar-fg: #ffffff; }
+  .navbar ul > * {
+    display: inline-block; }
+
+.navigation {
+  text-align: center;
+  vertical-align: middle; }
+  .navigation > .header {
+    font-size: 250%;
+    font-weight: bolder; }
+  .navigation *:not(.header) {
+    font-size: 150%; }
+
+.dark-mode {
+  border: none;
+  padding: 5px;
+  background-color: var(--dm-bg);
+  color: var(--dm-fg); }
+  body.dark {
+    --dm-bg: #393939; }
+  body:not(.dark) {
+    --dm-bg: white; }
+  body.dark {
+    --dm-fg: white; }
+  body:not(.dark) {
+    --dm-fg: #393939; }
+
+/* /navbar */
+/*index*/
+.index > h1 {
+  text-align: center; }
+
+.post-summaries * {
+  font-size: 28px;
+  text-transform: uppercase;
+  text-decoration: none;
+  font-weight: bold;
+  color: var(--summary-fg); }
+  @media screen and (max-width: 768px) {
+    .post-summaries * {
+      font-size: 22px; } }
+  body.dark {
+    --summary-fg: white; }
+  body:not(.dark) {
+    --summary-fg: black; }
+
+.post-summaries > li {
+  list-style: none;
+  padding-bottom: 2rem;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr auto; }
+  @media screen and (max-width: 768px) {
+    .post-summaries > li {
+      grid-template-rows: 1fr auto;
+      grid-template-columns: 1fr; } }
+.post-summaries a:hover {
+  color: var(--summary-hover); }
+  body.dark {
+    --summary-hover: red; }
+  body:not(.dark) {
+    --summary-hover: #a00000; }
+
+.post-summaries .date {
+  text-align: right; }
+
+/* /index */
+/* about */
+.about h1 {
+  text-align: center; }
+
+article.about {
+  width: 50%; }
+
+.social-list {
+  display: grid;
+  margin-top: 2rem;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  text-align: center; }
+  .social-list a {
+    color: var(--social-color); }
+    body.dark {
+      --social-color: white; }
+    body:not(.dark) {
+      --social-color: black; }
+    .social-list a:hover {
+      color: var(--social-color-hover); }
+      body.dark {
+        --social-color-hover: var(--link-dark); }
+      body:not(.dark) {
+        --social-color-hover: var(--link-light); }
+
+/* /about */
