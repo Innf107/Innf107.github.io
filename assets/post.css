@@ -149,7 +149,7 @@ div.sourceCode {
 /* navbar */
 .navbar {
   display: grid;
-  grid-template-columns: 1fr 2fr 0.5fr 0.5fr;
+  grid-template-columns: 1fr 2fr 0.5fr;
   background-color: var(--navbar-bg); }
   @media screen and (max-width: 768px) {
     .navbar {
@@ -192,17 +192,15 @@ div.sourceCode {
 
 .dark-mode {
   border: none;
-  padding: 5px;
-  background-color: var(--dm-bg);
-  color: var(--dm-fg); }
-  body.dark {
-    --dm-bg: #393939; }
-  body:not(.dark) {
-    --dm-bg: white; }
-  body.dark {
-    --dm-fg: white; }
-  body:not(.dark) {
-    --dm-fg: #393939; }
+  padding: 1rem;
+  padding-bottom: 0;
+  background: none; }
+
+#dark-mode-light {
+  color: white;
+  font-weight: 300;
+  /* hack to get a white emoji font */
+  filter: grayscale(100%) brightness(200%); }
 
 /* /navbar */
 /*index*/

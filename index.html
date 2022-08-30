@@ -13,6 +13,9 @@
         
         <link rel="stylesheet" type="text/css" href="/assets/post.css">
 
+        <!--Icons-->
+        <script src="https://kit.fontawesome.com/e4faccddf2.js" crossorigin="anonymous"></script>
+
         <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
     </head>
     <body>
@@ -25,9 +28,10 @@
         <div class="navigation middle">
         </div>
         <div class="navigation right">
-            <button class="dark-mode" onclick="toggleDarkMode()">Dark Mode</button>
-        </div>
-        <div class="navigation right">
+            <button class="dark-mode" onclick="toggleDarkMode()">
+                <i id="dark-mode-dark" class="fa-regular fa-moon"></i>
+                <span id="dark-mode-light">🔆</span>
+            </button>
             <a href="/about.html">About</a>
         </div>
     </nav>
@@ -36,6 +40,9 @@
             <h1>Posts</h1>
             <ul class="post-summaries">
                 <li>
+    <a href="https://prophetlabs.de/posts/coherentIP.html"> Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code></a>
+    <span class="date"> 29 August 2022</span>
+</li><li>
     <a href="https://prophetlabs.de/posts/unsafeCoerceDict.html"> Faking Local Instances with <code>unsafeCoerce Dict</code></a>
     <span class="date"> 18 March 2022</span>
 </li>

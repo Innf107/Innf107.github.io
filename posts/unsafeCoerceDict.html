@@ -48,9 +48,10 @@
         <div class="navigation middle">
         </div>
         <div class="navigation right">
-            <button class="dark-mode" onclick="toggleDarkMode()">Dark Mode</button>
-        </div>
-        <div class="navigation right">
+            <button class="dark-mode" onclick="toggleDarkMode()">
+                <i id="dark-mode-dark" class="fa-regular fa-moon"></i>
+                <span id="dark-mode-light">🔆</span>
+            </button>
             <a href="/about.html">About</a>
         </div>
     </nav>
@@ -60,7 +61,7 @@
             <!--title: Faking Local Instances with <code>unsafeCoerce Dict</code>-->
 <!--date: 18 March 2022-->
 <!--pubDate:2022-3-18-->
-<!--reddit:https://www.reddit.com/Ihaventactuallyupdatedthelinkyetsorry-->
+<!--reddit:https://www.reddit.com/r/haskell/comments/thaqi6/faking_local_instances_with_unsafecoerce_dict/-->
 <p>When you first learned about Haskell’s <code>Monoid</code> typeclass,
 you were probably quite surprised to find out that there is no instance
 for <code>Monoid Int</code> in <code>base</code>.</p>
@@ -602,6 +603,8 @@ additional methods that we would have had to implement manually<a
 href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
+            <hr>
+            If you want to tell me your thoughts about this post, feel free to write a comment on <a href="https://www.reddit.com/r/haskell/comments/thaqi6/faking_local_instances_with_unsafecoerce_dict/">Reddit</a> or <a href="/about.html">contact me directly</a>.
             <script src="/js/main.js"></script>
         </article>
     </body>

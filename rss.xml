@@ -7,6 +7,530 @@
         <lastBuildDate>05-05-2022</lastBuildDate>
         <ttl>60</ttl>
         <item>
+    <title> Coherent Local Instances with Dynamic Types and ImplicitParams</title>
+    <link>https://prophetlabs.de/posts/coherentIP.html</link>
+    <guid isPremaLink="true">https://prophetlabs.de/posts/coherentIP.html</guid>
+    <pubDate>2022-8-29</pubDate>
+    <description>
+
+
+&lt;p&gt;If you read my &lt;a href="/posts/unsafeCoerceDict.html"&gt;previous
+post&lt;/a&gt;&lt;a href="#fn1" class="footnote-ref" id="fnref1"
+role="doc-noteref"&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt; about local instances, you might
+have noticed something. Remember how I said that
+&lt;code&gt;ImplicitParams&lt;/code&gt; are really just &lt;a
+href="/posts/unsafeCoerceDict.html#implicitparams"&gt;syntactic sugar for
+instances of the type class &lt;code&gt;GHC.Classes.IP&lt;/code&gt;&lt;/a&gt;? Well,
+unlike &lt;code&gt;withFakeDict&lt;/code&gt;, &lt;code&gt;ImplicitParams&lt;/code&gt; can safely
+be overridden, without causing incoherence issues. Couldn’t we somehow
+use &lt;code&gt;ImplicitParams&lt;/code&gt; to provide local type class instances
+that can safely be overridden?&lt;/p&gt;
+&lt;p&gt;Most type classes are a bit more complex than they look, so let’s
+invent a new one to use as a running example.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb1-1"&gt;&lt;a href="#cb1-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;Pretty&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-2"&gt;&lt;a href="#cb1-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    pretty ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code&gt;Pretty&lt;/code&gt; is just like &lt;code&gt;Show&lt;/code&gt;, but with fewer
+methods and no preexisting instances that might get in our way.&lt;/p&gt;
+&lt;p&gt;We also need to define a dictionary type for &lt;code&gt;Pretty&lt;/code&gt;. We
+could use the Template Haskell machinery from last time for this, but
+&lt;code&gt;Pretty&lt;/code&gt; is simple enough to do it manually for now.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb2-1"&gt;&lt;a href="#cb2-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="co"&gt;-- The newtype is important since `Pretty` only has a single method&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-2"&gt;&lt;a href="#cb2-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;newtype&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; {&lt;/span&gt;
+&lt;span id="cb2-3"&gt;&lt;a href="#cb2-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    _pretty ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-4"&gt;&lt;a href="#cb2-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;}&lt;/span&gt;
+&lt;span id="cb2-5"&gt;&lt;a href="#cb2-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-6"&gt;&lt;a href="#cb2-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;boringPretty ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-7"&gt;&lt;a href="#cb2-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;boringPretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; {&lt;/span&gt;
+&lt;span id="cb2-8"&gt;&lt;a href="#cb2-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    _pretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="fu"&gt;show&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-9"&gt;&lt;a href="#cb2-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;}&lt;/span&gt;
+&lt;span id="cb2-10"&gt;&lt;a href="#cb2-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-11"&gt;&lt;a href="#cb2-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;nicePretty ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-12"&gt;&lt;a href="#cb2-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;nicePretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; {&lt;/span&gt;
+&lt;span id="cb2-13"&gt;&lt;a href="#cb2-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    _pretty &lt;span class="ot"&gt;=&lt;/span&gt; \x &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="st"&gt;&quot;✨&quot;&lt;/span&gt; &lt;span class="op"&gt;&lt;&gt;&lt;/span&gt; &lt;span class="fu"&gt;show&lt;/span&gt; x &lt;span class="op"&gt;&lt;&gt;&lt;/span&gt; &lt;span class="st"&gt;&quot;✨&quot;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-14"&gt;&lt;a href="#cb2-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;With this, we could already write a few functions that use our ‘type
+class’, just by accepting a corresponding dictionary as an implicit
+parameter. This way we actually get something closely resembling local
+instances already!&lt;/p&gt;
+&lt;div class="sourceCode" id="cb3"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb3-1"&gt;&lt;a href="#cb3-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; (&lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb3-2"&gt;&lt;a href="#cb3-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt; _pretty &lt;span class="op"&gt;?&lt;/span&gt;prettyInst&lt;/span&gt;
+&lt;span id="cb3-3"&gt;&lt;a href="#cb3-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb3-4"&gt;&lt;a href="#cb3-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;f ::&lt;/span&gt; (&lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; [a] &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb3-5"&gt;&lt;a href="#cb3-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;f xs &lt;span class="ot"&gt;=&lt;/span&gt; intercalate &lt;span class="st"&gt;&quot;, &quot;&lt;/span&gt; (&lt;span class="fu"&gt;map&lt;/span&gt; pretty xs)&lt;/span&gt;
+&lt;span id="cb3-6"&gt;&lt;a href="#cb3-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb3-7"&gt;&lt;a href="#cb3-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;main ::&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; ()&lt;/span&gt;
+&lt;span id="cb3-8"&gt;&lt;a href="#cb3-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;main &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb3-9"&gt;&lt;a href="#cb3-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; boringPretty&lt;/span&gt;
+&lt;span id="cb3-10"&gt;&lt;a href="#cb3-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; f [&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;2&lt;/span&gt;, &lt;span class="dv"&gt;3&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;]&lt;/span&gt;
+&lt;span id="cb3-11"&gt;&lt;a href="#cb3-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; nicePretty &lt;span class="kw"&gt;in&lt;/span&gt; &lt;span class="fu"&gt;putStrLn&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; f [&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;2&lt;/span&gt;, &lt;span class="dv"&gt;3&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;]&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Let’s also enable optimizations, just to make sure this is actually
+coherent. :)&lt;/p&gt;
+&lt;div class="sourceCode" id="cb4"&gt;&lt;pre
+class="sourceCode txt"&gt;&lt;code class="sourceCode default"&gt;&lt;span id="cb4-1"&gt;&lt;a href="#cb4-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;$ ghc -O2 Main.hs &amp;&amp; ./Main&lt;/span&gt;
+&lt;span id="cb4-2"&gt;&lt;a href="#cb4-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;[1 of 1] Compiling Main             ( Main.hs, Main.o )&lt;/span&gt;
+&lt;span id="cb4-3"&gt;&lt;a href="#cb4-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;Linking Main ...&lt;/span&gt;
+&lt;span id="cb4-4"&gt;&lt;a href="#cb4-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;5&lt;/span&gt;
+&lt;span id="cb4-5"&gt;&lt;a href="#cb4-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;✨5✨&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Perfect!&lt;/p&gt;
+&lt;p&gt;There is just one issue. While &lt;code&gt;ImplicitParams&lt;/code&gt; make it
+almost trivial to work with &lt;em&gt;local&lt;/em&gt; instances, we lose the
+ability to define regular &lt;em&gt;global&lt;/em&gt; instances.&lt;/p&gt;
+&lt;p&gt;Whenever we want to use a function with a &lt;code&gt;?prettyInst&lt;/code&gt;
+constraint, we always have to define the instance we want to use
+somewhere locally in its lexical scope.&lt;/p&gt;
+&lt;p&gt;If we wanted an actual replacement for type classes with local
+&lt;em&gt;and&lt;/em&gt; global instances, we would need some kind of…&lt;/p&gt;
+&lt;h2 id="global-implicitparams"&gt;Global &lt;code&gt;ImplicitParams&lt;/code&gt;?&lt;/h2&gt;
+&lt;p&gt;Remember how &lt;code&gt;IP&lt;/code&gt; is just a regular type class? Couldn’t
+we just… you know… define a regular, global instance for
+&lt;code&gt;IP&lt;/code&gt;?&lt;/p&gt;
+&lt;div class="sourceCode" id="cb5"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb5-1"&gt;&lt;a href="#cb5-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;x&quot;&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-2"&gt;&lt;a href="#cb5-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    ip &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dv"&gt;5&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-3"&gt;&lt;a href="#cb5-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb5-4"&gt;&lt;a href="#cb5-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;λ&lt;span class="op"&gt;&gt;&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;x&lt;/span&gt;
+&lt;span id="cb5-5"&gt;&lt;a href="#cb5-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="dv"&gt;5&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;So… uh… I honestly did not expect this to work, considering GHC
+forbids manual &lt;code&gt;Typeable&lt;/code&gt; or &lt;code&gt;Generic&lt;/code&gt;
+instances.&lt;/p&gt;
+&lt;p&gt;Anyway, if we want to model our class with this, we can simply write
+global instances as instances for &lt;code&gt;IP&lt;/code&gt; and override local
+instances with &lt;code&gt;let ?x = ...&lt;/code&gt; just as we did before.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb6"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb6-1"&gt;&lt;a href="#cb6-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;prettyInst&quot;&lt;/span&gt; (&lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;) &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb6-2"&gt;&lt;a href="#cb6-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    pretty &lt;span class="ot"&gt;=&lt;/span&gt; boringPretty&lt;/span&gt;
+&lt;span id="cb6-3"&gt;&lt;a href="#cb6-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb6-4"&gt;&lt;a href="#cb6-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;main ::&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; ()&lt;/span&gt;
+&lt;span id="cb6-5"&gt;&lt;a href="#cb6-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;main &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb6-6"&gt;&lt;a href="#cb6-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (pretty (&lt;span class="dv"&gt;5&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;))&lt;/span&gt;
+&lt;span id="cb6-7"&gt;&lt;a href="#cb6-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (&lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; nicePretty &lt;span class="kw"&gt;in&lt;/span&gt; pretty (&lt;span class="dv"&gt;5&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;))&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class="sourceCode" id="cb7"&gt;&lt;pre
+class="sourceCode bash"&gt;&lt;code class="sourceCode bash"&gt;&lt;span id="cb7-1"&gt;&lt;a href="#cb7-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;$&lt;/span&gt; ghc &lt;span class="at"&gt;-O2&lt;/span&gt; Main.hs &lt;span class="kw"&gt;&amp;&amp;&lt;/span&gt; &lt;span class="ex"&gt;./Main&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-2"&gt;&lt;a href="#cb7-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;[1&lt;/span&gt; of 1] Compiling Main             &lt;span class="er"&gt;(&lt;/span&gt; &lt;span class="ex"&gt;Main.hs,&lt;/span&gt; Main.o &lt;span class="kw"&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-3"&gt;&lt;a href="#cb7-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;Linking&lt;/span&gt; Main ...&lt;/span&gt;
+&lt;span id="cb7-4"&gt;&lt;a href="#cb7-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;5&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-5"&gt;&lt;a href="#cb7-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;✨5✨&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Awesome! Unlike our unsafeCoerce trick last time, optimizations don’t
+break &lt;code&gt;ImplicitParams&lt;/code&gt;, so this is entirely safe!&lt;/p&gt;
+&lt;p&gt;We just came up with a type class replacement that completely
+subsumes local, as well as global instances in a few lines of code.&lt;/p&gt;
+&lt;p&gt;It’s that simple!&lt;/p&gt;
+&lt;h2 id="its-not-that-simple"&gt;It’s not that simple&lt;/h2&gt;
+&lt;p&gt;If you look at the definition of &lt;code&gt;IP&lt;/code&gt;, you will likely
+notice the deadly flaw in our current approach&lt;/p&gt;
+&lt;div class="sourceCode" id="cb8"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb8-1"&gt;&lt;a href="#cb8-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; x a &lt;span class="op"&gt;|&lt;/span&gt; x &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb8-2"&gt;&lt;a href="#cb8-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    ip ::&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;strong&gt;There is a functional dependency between the parameter name
+and its type.&lt;/strong&gt;&lt;a href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt; This means that every parameter name
+can only ever be used with &lt;em&gt;the same type argument&lt;/em&gt; and so our
+type class replacement can only ever have a single instance per class.
+The entire purpose of type classes is to overload operations for
+different types, so this completely defeats the point of using type
+classes in the first place. :/&lt;/p&gt;
+&lt;p&gt;If we try to write an instance for two separate types anyway, the
+compiler is going to complain as expected, since we violated the
+functional dependency.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb9"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb9-1"&gt;&lt;a href="#cb9-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;prettyInst&quot;&lt;/span&gt; (&lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;) &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb9-2"&gt;&lt;a href="#cb9-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    pretty &lt;span class="ot"&gt;=&lt;/span&gt; boringPretty&lt;/span&gt;
+&lt;span id="cb9-3"&gt;&lt;a href="#cb9-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb9-4"&gt;&lt;a href="#cb9-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="co"&gt;-- Error: Functional dependency conflict&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb9-5"&gt;&lt;a href="#cb9-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;prettyInst&quot;&lt;/span&gt; (&lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;) &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb9-6"&gt;&lt;a href="#cb9-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    pretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="fu"&gt;id&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2
+id="when-life-gives-you-lemons"&gt;&lt;a href="https://www.youtube.com/watch?v=g8ufRnf2Exc" target="_blank"&gt;When
+life gives you lemons&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;Unfortunately, since we can only have a single global &lt;code&gt;IP&lt;/code&gt;
+instance, we cannot use Haskell’s regular type class dispatching
+mechanism to select the instance that we want.&lt;/p&gt;
+&lt;p&gt;But…&lt;/p&gt;
+&lt;p&gt;we could try and build our own, &lt;em&gt;based on runtime type
+information&lt;/em&gt;. This solution will not work for all types, but it
+might work for all that implement &lt;code&gt;Typeable&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;With &lt;code&gt;Typeable&lt;/code&gt;, we can extract a &lt;code&gt;TypeRep&lt;/code&gt;&lt;a
+href="#fn3" class="footnote-ref" id="fnref3"
+role="doc-noteref"&gt;&lt;sup&gt;3&lt;/sup&gt;&lt;/a&gt; from a &lt;code&gt;Proxy&lt;/code&gt; for a
+given type and, thanks to &lt;code&gt;typeRepFingerprint&lt;/code&gt;, we are able
+to turn this &lt;code&gt;TypeRep&lt;/code&gt; into a &lt;code&gt;Fingerprint&lt;/code&gt; that
+is unique for every type. This &lt;code&gt;Fingerprint&lt;/code&gt; implements
+&lt;code&gt;Ord&lt;/code&gt;, so we can use it as a key in a &lt;code&gt;Map&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;With this, we can build some machinery that selects an instance from
+a &lt;code&gt;Map&lt;/code&gt; based on the runtime &lt;code&gt;TypeRep&lt;/code&gt; of a type.
+The values of the &lt;code&gt;Map&lt;/code&gt; then represent the instances for the
+given types.&lt;/p&gt;
+&lt;p&gt;Conveniently, we already have a way of reifying instances, so we can
+just store the concrete dictionaries (&lt;code&gt;PrettyDict&lt;/code&gt;s in this
+case).&lt;/p&gt;
+&lt;p&gt;We have to store dictionaries of different types
+(e.g. &lt;code&gt;PrettyDict Int&lt;/code&gt;, &lt;code&gt;PrettyDict Bool&lt;/code&gt;, …), so
+we could try some tricks with existentials, but since we are relying on
+runtime type information anyway, it is easier to store them as &lt;a
+href="https://hackage.haskell.org/package/base-4.16.1.0/docs/GHC-Exts.html#t:Any"&gt;&lt;code&gt;Any&lt;/code&gt;&lt;/a&gt;
+and use &lt;code&gt;unsafeCoerce&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb10"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb10-1"&gt;&lt;a href="#cb10-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;newtype&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt; &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; {&lt;span class="ot"&gt;unInstMap ::&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; &lt;span class="dt"&gt;Fingerprint&lt;/span&gt; &lt;span class="dt"&gt;Any&lt;/span&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;To actually use this custom dispatching mechanism, we need to
+reimplement our &lt;code&gt;pretty&lt;/code&gt; ‘method’, which now takes an
+&lt;code&gt;InstMap&lt;/code&gt; as an implicit parameter and extracts the
+dictionary for the type used, based on its &lt;code&gt;TypeRep&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb11"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb11-1"&gt;&lt;a href="#cb11-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a&lt;span class="op"&gt;.&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb11-2"&gt;&lt;a href="#cb11-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb11-3"&gt;&lt;a href="#cb11-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb11-4"&gt;&lt;a href="#cb11-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; M.lookup key (unInstMap &lt;span class="op"&gt;?&lt;/span&gt;prettyInst) &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb11-5"&gt;&lt;a href="#cb11-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Nothing&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="fu"&gt;error&lt;/span&gt; &lt;span class="st"&gt;&quot;pretty: No instance found at runtime&quot;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb11-6"&gt;&lt;a href="#cb11-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Just&lt;/span&gt; dict &lt;span class="ot"&gt;-&gt;&lt;/span&gt; _pretty &lt;span class="op"&gt;$&lt;/span&gt; unsafeCoerce dict&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;To add a local instance to the instance map, all we have to do is to
+update the implicit &lt;code&gt;?prettyInst&lt;/code&gt; parameter.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb12"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb12-1"&gt;&lt;a href="#cb12-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withPretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;Typeable&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; ((&lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; b) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;
+&lt;span id="cb12-2"&gt;&lt;a href="#cb12-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withPretty dict x &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb12-3"&gt;&lt;a href="#cb12-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb12-4"&gt;&lt;a href="#cb12-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; prevInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb12-5"&gt;&lt;a href="#cb12-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; (M.insert key (unsafeCoerce dict) prevInst) &lt;span class="kw"&gt;in&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb12-6"&gt;&lt;a href="#cb12-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    x&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Okay, so we gave up type safety, but in return, we gained the ability
+to override instances locally… which we could already do with just
+&lt;code&gt;ImplicitParams&lt;/code&gt; without any runtime type dispatch machinery.
+Sounds like we are back to square one?&lt;/p&gt;
+&lt;h2 id="recovering-type-safety"&gt;Recovering type safety&lt;/h2&gt;
+&lt;p&gt;We have a way of locally overriding instances, but we should really
+make sure that instances are actually available.&lt;/p&gt;
+&lt;p&gt;How could we check this? Well, type classes are perfect for
+invariants like this!&lt;/p&gt;
+&lt;p&gt;If using type classes to implement a type class replacement sounds
+pointless, keep in mind that we don’t care about the type class methods.
+In fact, we don’t even need any! This way, incoherence is not an issue,
+since the concrete instance chosen is irrelevant.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb13"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb13-1"&gt;&lt;a href="#cb13-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a&lt;/span&gt;
+&lt;span id="cb13-2"&gt;&lt;a href="#cb13-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb13-3"&gt;&lt;a href="#cb13-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a&lt;span class="op"&gt;.&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb13-4"&gt;&lt;a href="#cb13-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="co"&gt;-- same implementation&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Note that we didn’t change anything on the term level. The
+&lt;code&gt;HasPretty&lt;/code&gt; constraint in the type purely exists to make sure
+that we call &lt;code&gt;withPretty&lt;/code&gt; at some point before calling
+&lt;code&gt;pretty&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;To satisfy the &lt;code&gt;HasPretty&lt;/code&gt; constraint in the continuation
+passed to &lt;code&gt;withPretty&lt;/code&gt;, we can just use the
+&lt;code&gt;unsafeCoerce&lt;/code&gt; trick from the previous post.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb14"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb14-1"&gt;&lt;a href="#cb14-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-2"&gt;&lt;a href="#cb14-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb14-3"&gt;&lt;a href="#cb14-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-4"&gt;&lt;a href="#cb14-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb14-5"&gt;&lt;a href="#cb14-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withPretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;Typeable&lt;/span&gt; a &lt;/span&gt;
+&lt;span id="cb14-6"&gt;&lt;a href="#cb14-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;           &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;/span&gt;
+&lt;span id="cb14-7"&gt;&lt;a href="#cb14-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;           &lt;span class="ot"&gt;-&gt;&lt;/span&gt; ((&lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; b) &lt;/span&gt;
+&lt;span id="cb14-8"&gt;&lt;a href="#cb14-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;           &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;
+&lt;span id="cb14-9"&gt;&lt;a href="#cb14-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withPretty dict x &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-10"&gt;&lt;a href="#cb14-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-11"&gt;&lt;a href="#cb14-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; previousInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-12"&gt;&lt;a href="#cb14-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; unsafeCoerce (&lt;span class="dt"&gt;Dict&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Dict&lt;/span&gt; (&lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;))&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Dict&lt;/span&gt; (&lt;span class="dt"&gt;HasPretty&lt;/span&gt; a) &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-13"&gt;&lt;a href="#cb14-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Dict&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb14-14"&gt;&lt;a href="#cb14-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; (M.insert key (unsafeCoerce dict) previousInst) &lt;span class="kw"&gt;in&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb14-15"&gt;&lt;a href="#cb14-15" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            x&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;So, a function that would have a &lt;code&gt;Pretty a&lt;/code&gt; constraint
+with regular classes or a &lt;code&gt;(?prettyInst :: PrettyDict a)&lt;/code&gt;
+constraint with &lt;code&gt;ImplicitParams&lt;/code&gt;, now needs a
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;
+constraint.&lt;/p&gt;
+&lt;h2 id="going-global"&gt;Going global&lt;/h2&gt;
+&lt;p&gt;We recovered type safety, but our approach still doesn’t offer any
+advantage over pure &lt;code&gt;ImplicitParams&lt;/code&gt;, since we still don’t
+have a way to write global instances.&lt;/p&gt;
+&lt;p&gt;Your first thought might be to write a global instance for
+&lt;code&gt;IP "prettyInst" InstMap&lt;/code&gt; and somehow populate that when
+defining new global instances.&lt;/p&gt;
+&lt;p&gt;Unfortunately, this doesn’t work. We could try to use a global
+&lt;code&gt;IORef&lt;/code&gt; and extend it at runtime, but how would we run the
+code to extend that IORef? Haskell doesn’t provide a way to run IO code
+at module load time, so we couldn’t make sure that the map contains all
+relevant instances without having to populate it in
+&lt;code&gt;main&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Instead, let’s start with an empty map.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb15"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb15-1"&gt;&lt;a href="#cb15-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;prettyInst&quot;&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb15-2"&gt;&lt;a href="#cb15-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    ip &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; &lt;span class="fu"&gt;mempty&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The typechecker prevents us from using this instance without further
+local instances since we don’t have any &lt;code&gt;HasPretty&lt;/code&gt; instances
+yet.&lt;/p&gt;
+&lt;p&gt;Fortunately, telling the type checker about global instances is quite
+easy: We just have to implement &lt;code&gt;HasPretty&lt;/code&gt; for the type we
+are writing an instance for.&lt;/p&gt;
+&lt;p&gt;Since we don’t have an actual instance yet, this would still crash at
+runtime; our instance map doesn’t have any implementations by
+default.&lt;/p&gt;
+&lt;p&gt;Consider this: In case the instance map does not contain an entry for
+the type &lt;code&gt;pretty&lt;/code&gt; is called at, but it &lt;em&gt;is called&lt;/em&gt;
+(meaning the &lt;code&gt;HasPretty&lt;/code&gt; constraint was satisfied), we know
+that there &lt;em&gt;has to be a global instance&lt;/em&gt; and that &lt;em&gt;no local
+instances are in scope&lt;/em&gt;. Thus, crucially, &lt;strong&gt;there is only a
+single instance for &lt;code&gt;HasPretty&lt;/code&gt;, which is a regular global
+instance&lt;/strong&gt;. If there is only a single instance, we don’t need to
+deal with incoherence and we are able to use actual methods from
+&lt;code&gt;HasPretty&lt;/code&gt; with confidence that they are coming from the
+global instance with or without optimizations.&lt;/p&gt;
+&lt;p&gt;What would possible methods on &lt;code&gt;HasPretty&lt;/code&gt; look like? We
+still need to specify the implementation of our global instance
+somewhere, so this would be a perfect place to put that.&lt;/p&gt;
+&lt;p&gt;Now, whenever &lt;code&gt;pretty&lt;/code&gt; is called and detects a runtime
+instance in its instance map, we know that the instance has been
+overridden and &lt;code&gt;HasPretty&lt;/code&gt; is potentially contaminated, so we
+use the instance from the instance map directly and ignore any methods
+from &lt;code&gt;HasPretty&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;If there is no runtime instance, we know that the instance it is
+called at has to be a global, coherent instance and we can safely use
+the implementation from &lt;code&gt;HasPretty&lt;/code&gt; to maintain
+coherence.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb16"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb16-1"&gt;&lt;a href="#cb16-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-2"&gt;&lt;a href="#cb16-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    globalInst ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a&lt;/span&gt;
+&lt;span id="cb16-3"&gt;&lt;a href="#cb16-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb16-4"&gt;&lt;a href="#cb16-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-5"&gt;&lt;a href="#cb16-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb16-6"&gt;&lt;a href="#cb16-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-7"&gt;&lt;a href="#cb16-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="co"&gt;-- This will never be called unless someone seriously messes with things, &lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-8"&gt;&lt;a href="#cb16-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="co"&gt;-- since `withPretty` always adds an instance to the ?prettyInst InstMap &lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-9"&gt;&lt;a href="#cb16-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    globalInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="fu"&gt;error&lt;/span&gt; &lt;span class="st"&gt;&quot;pretty: No instance found at runtime&quot;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-10"&gt;&lt;a href="#cb16-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb16-11"&gt;&lt;a href="#cb16-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a&lt;span class="op"&gt;.&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-12"&gt;&lt;a href="#cb16-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-13"&gt;&lt;a href="#cb16-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-14"&gt;&lt;a href="#cb16-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; M.lookup key (unInstMap &lt;span class="op"&gt;?&lt;/span&gt;prettyInst) &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-15"&gt;&lt;a href="#cb16-15" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Nothing&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb16-16"&gt;&lt;a href="#cb16-16" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            _pretty globalInst&lt;/span&gt;
+&lt;span id="cb16-17"&gt;&lt;a href="#cb16-17" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Just&lt;/span&gt; dict &lt;span class="ot"&gt;-&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb16-18"&gt;&lt;a href="#cb16-18" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            _pretty &lt;span class="op"&gt;$&lt;/span&gt; unsafeCoerce dict&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This works!&lt;/p&gt;
+&lt;p&gt;If we try the example from before…&lt;/p&gt;
+&lt;div class="sourceCode" id="cb17"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb17-1"&gt;&lt;a href="#cb17-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb17-2"&gt;&lt;a href="#cb17-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    globalInst &lt;span class="ot"&gt;=&lt;/span&gt; boringPretty&lt;/span&gt;
+&lt;span id="cb17-3"&gt;&lt;a href="#cb17-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb17-4"&gt;&lt;a href="#cb17-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;main ::&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; ()&lt;/span&gt;
+&lt;span id="cb17-5"&gt;&lt;a href="#cb17-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;main &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb17-6"&gt;&lt;a href="#cb17-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (pretty (&lt;span class="dv"&gt;5&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;))&lt;/span&gt;
+&lt;span id="cb17-7"&gt;&lt;a href="#cb17-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (withPretty nicePretty (pretty (&lt;span class="dv"&gt;5&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;)))&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class="sourceCode" id="cb18"&gt;&lt;pre
+class="sourceCode bash"&gt;&lt;code class="sourceCode bash"&gt;&lt;span id="cb18-1"&gt;&lt;a href="#cb18-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;$&lt;/span&gt; ghc &lt;span class="at"&gt;-O2&lt;/span&gt; Main.hs &lt;span class="kw"&gt;&amp;&amp;&lt;/span&gt; &lt;span class="ex"&gt;./Main&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb18-2"&gt;&lt;a href="#cb18-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;[1&lt;/span&gt; of 1] Compiling Main             &lt;span class="er"&gt;(&lt;/span&gt; &lt;span class="ex"&gt;Main.hs,&lt;/span&gt; Main.o &lt;span class="kw"&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb18-3"&gt;&lt;a href="#cb18-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;Linking&lt;/span&gt; Main ...&lt;/span&gt;
+&lt;span id="cb18-4"&gt;&lt;a href="#cb18-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;5&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb18-5"&gt;&lt;a href="#cb18-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;✨5✨&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;… everything works as expected, even with optimizations!&lt;/p&gt;
+&lt;p&gt;There is actually not much boilerplate involved in this technique,
+compared to regular type classes and instances.&lt;/p&gt;
+&lt;p&gt;The main limitation is that types used in instances all have to
+implement &lt;code&gt;Typeable&lt;/code&gt;, so we can only use this for relatively
+simple instances.&lt;/p&gt;
+&lt;p&gt;Defining a class is quite a bit more verbose since we have to define
+a dictionary type, a &lt;code&gt;HasX&lt;/code&gt; class to carry the global
+instance, a global instance for the associated implicit parameter as
+well as functions to apply and override the active instance.&lt;/p&gt;
+&lt;p&gt;To use our running example, the class definition&lt;/p&gt;
+&lt;div class="sourceCode" id="cb19"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb19-1"&gt;&lt;a href="#cb19-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;Pretty&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb19-2"&gt;&lt;a href="#cb19-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    pretty ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;becomes&lt;/p&gt;
+&lt;div class="sourceCode" id="cb20"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb20-1"&gt;&lt;a href="#cb20-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;newtype&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; {&lt;/span&gt;
+&lt;span id="cb20-2"&gt;&lt;a href="#cb20-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    _pretty ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-3"&gt;&lt;a href="#cb20-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;}&lt;/span&gt;
+&lt;span id="cb20-4"&gt;&lt;a href="#cb20-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb20-5"&gt;&lt;a href="#cb20-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-6"&gt;&lt;a href="#cb20-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    globalInst ::&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a&lt;/span&gt;
+&lt;span id="cb20-7"&gt;&lt;a href="#cb20-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb20-8"&gt;&lt;a href="#cb20-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a&lt;span class="op"&gt;.&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-9"&gt;&lt;a href="#cb20-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-10"&gt;&lt;a href="#cb20-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-11"&gt;&lt;a href="#cb20-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; M.lookup key (unInstMap &lt;span class="op"&gt;?&lt;/span&gt;prettyInst) &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-12"&gt;&lt;a href="#cb20-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Nothing&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb20-13"&gt;&lt;a href="#cb20-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            _pretty globalInst&lt;/span&gt;
+&lt;span id="cb20-14"&gt;&lt;a href="#cb20-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Just&lt;/span&gt; dict &lt;span class="ot"&gt;-&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-15"&gt;&lt;a href="#cb20-15" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            _pretty &lt;span class="op"&gt;$&lt;/span&gt; unsafeCoerce dict&lt;/span&gt;
+&lt;span id="cb20-16"&gt;&lt;a href="#cb20-16" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb20-17"&gt;&lt;a href="#cb20-17" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-18"&gt;&lt;a href="#cb20-18" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb20-19"&gt;&lt;a href="#cb20-19" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-20"&gt;&lt;a href="#cb20-20" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    globalInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="fu"&gt;error&lt;/span&gt; &lt;span class="st"&gt;&quot;pretty: No instance found at runtime&quot;&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-21"&gt;&lt;a href="#cb20-21" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb20-22"&gt;&lt;a href="#cb20-22" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withPretty ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;Typeable&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; ((&lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; b) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;
+&lt;span id="cb20-23"&gt;&lt;a href="#cb20-23" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withPretty dict x &lt;span class="ot"&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-24"&gt;&lt;a href="#cb20-24" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; key &lt;span class="ot"&gt;=&lt;/span&gt; typeRepFingerprint (typeRep (&lt;span class="dt"&gt;Proxy&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; a)) &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-25"&gt;&lt;a href="#cb20-25" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; prevInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="kw"&gt;in&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-26"&gt;&lt;a href="#cb20-26" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; unsafeCoerce (&lt;span class="dt"&gt;Dict&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Dict&lt;/span&gt; (&lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;LocalPrettyInst&lt;/span&gt;))&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Dict&lt;/span&gt; (&lt;span class="dt"&gt;HasPretty&lt;/span&gt; a) &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-27"&gt;&lt;a href="#cb20-27" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;Dict&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb20-28"&gt;&lt;a href="#cb20-28" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            &lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="op"&gt;?&lt;/span&gt;prettyInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkInstMap&lt;/span&gt; (M.insert key (unsafeCoerce dict) prevInst) &lt;span class="kw"&gt;in&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb20-29"&gt;&lt;a href="#cb20-29" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            x&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Crucially, though, the boilerplate involved in &lt;em&gt;using&lt;/em&gt; these
+overridable instances is pretty minimal and most of the boilerplate when
+defining these ‘classes’ could be automated with TemplateHaskell.&lt;/p&gt;
+&lt;p&gt;New global instances only have to implement &lt;code&gt;HasPretty&lt;/code&gt;,
+which is a tiny bit less ergonomic than &lt;code&gt;Pretty&lt;/code&gt;, since we
+have to implement the dictionary, not the methods and there are no
+default implementations.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb21"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb21-1"&gt;&lt;a href="#cb21-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb21-2"&gt;&lt;a href="#cb21-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    globalInst &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;PrettyDict&lt;/span&gt; {&lt;/span&gt;
+&lt;span id="cb21-3"&gt;&lt;a href="#cb21-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        _pretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="fu"&gt;show&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb21-4"&gt;&lt;a href="#cb21-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    }&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The only difference between a function that uses our overridable
+&lt;code&gt;pretty&lt;/code&gt; and one that uses the regular &lt;code&gt;Pretty&lt;/code&gt;
+type class is in the constraint, which changes from
+&lt;code&gt;Pretty a&lt;/code&gt; to
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;We could try to factor this out to a type synonym.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb22"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb22-1"&gt;&lt;a href="#cb22-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;type&lt;/span&gt; &lt;span class="dt"&gt;Pretty&lt;/span&gt; a &lt;span class="ot"&gt;=&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Thereby completely eliminating any additonal boilerplate when using
+&lt;code&gt;pretty&lt;/code&gt;!&lt;/p&gt;
+&lt;p&gt;Let’s rewrite &lt;code&gt;pretty&lt;/code&gt; with a &lt;code&gt;Pretty a&lt;/code&gt;
+constraint instead of the more complicated
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;. After
+all, &lt;code&gt;Pretty&lt;/code&gt; is just a type synonym, so this should mean
+exactly the same thing, right? …&lt;em&gt;right?&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="it-all-comes-tumbling-down"&gt;It all comes tumbling down&lt;/h2&gt;
+&lt;div class="sourceCode" id="cb23"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb23-1"&gt;&lt;a href="#cb23-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; &lt;span class="dt"&gt;Pretty&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-2"&gt;&lt;a href="#cb23-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;pretty &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;...&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-3"&gt;&lt;a href="#cb23-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb23-4"&gt;&lt;a href="#cb23-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;λ&lt;span class="op"&gt;&gt;&lt;/span&gt; &lt;span class="op"&gt;:&lt;/span&gt;t pretty&lt;/span&gt;
+&lt;span id="cb23-5"&gt;&lt;a href="#cb23-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;pretty ::&lt;/span&gt; (&lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="dt"&gt;Typeable&lt;/span&gt; a) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Uh oh. The &lt;code&gt;?prettyInst :: InstMap&lt;/code&gt; constraint just…
+disappeared?&lt;/p&gt;
+&lt;p&gt;What happened here, is that when resolving&lt;a href="#fn4"
+class="footnote-ref" id="fnref4" role="doc-noteref"&gt;&lt;sup&gt;4&lt;/sup&gt;&lt;/a&gt; the
+type synonym, GHC tried to simplify the constraint and removed the
+monomorphic &lt;code&gt;?prettyInst :: InstMap&lt;/code&gt; constraint, since an
+instance was found in the global context.&lt;/p&gt;
+&lt;p&gt;This obviously sounds like a bug, but I am not certain that it
+actually is. In fact, the real bug is probably that we were able to
+define a global instance for &lt;code&gt;IP&lt;/code&gt; in the first place.&lt;/p&gt;
+&lt;p&gt;Okay, we are unable to factor out the
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;
+constraint with a type synonym. Since we have a custom
+&lt;code&gt;HasPretty&lt;/code&gt; class anyway, we could try to include these as
+superclasses in the style of &lt;a
+href="https://blog.csongor.co.uk/opaque-constraint-synonyms"&gt;Opaque
+constraint synonyms&lt;/a&gt; instead.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb24"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb24-1"&gt;&lt;a href="#cb24-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;IP&lt;/span&gt; &lt;span class="st"&gt;&quot;prettyInst&quot;&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;…except this doesn’t work. GHC does not allow implicit parameters in
+superclasses, even if we explicitly write them as &lt;code&gt;IP&lt;/code&gt; class
+constraints.&lt;/p&gt;
+&lt;p&gt;This is a reasonable restriction because the time at which
+dictionaries with super classes are constructed can be quite
+unpredictable, so an implicit parameter superclass constraint will
+probably not contain the intended value, but it &lt;em&gt;is&lt;/em&gt; annoying
+since we have to keep the &lt;code&gt;?prettyInst :: InstMap&lt;/code&gt; constraint
+around.&lt;/p&gt;
+&lt;p&gt;We could at least try to factor out &lt;code&gt;Typeable&lt;/code&gt; though.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb25"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb25-1"&gt;&lt;a href="#cb25-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;Typeable&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb25-2"&gt;&lt;a href="#cb25-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="op"&gt;...&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This compiles and even runs correctly!&lt;/p&gt;
+&lt;p&gt;…as long as we compile &lt;em&gt;with&lt;/em&gt; optimizations.&lt;a href="#fn5"
+class="footnote-ref" id="fnref5" role="doc-noteref"&gt;&lt;sup&gt;5&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;So, factoring out the
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;
+constraint is not an option. Is there anything else we cannot do?&lt;/p&gt;
+&lt;div class="sourceCode" id="cb26"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb26-1"&gt;&lt;a href="#cb26-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;f ::&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a, &lt;span class="op"&gt;?&lt;/span&gt;&lt;span class="ot"&gt;prettyInst ::&lt;/span&gt; &lt;span class="dt"&gt;InstMap&lt;/span&gt;) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb26-2"&gt;&lt;a href="#cb26-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;f &lt;span class="ot"&gt;=&lt;/span&gt; pretty&lt;/span&gt;
+&lt;span id="cb26-3"&gt;&lt;a href="#cb26-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb26-4"&gt;&lt;a href="#cb26-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;g x &lt;span class="ot"&gt;=&lt;/span&gt; f x&lt;/span&gt;
+&lt;span id="cb26-5"&gt;&lt;a href="#cb26-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb26-6"&gt;&lt;a href="#cb26-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;λ&lt;span class="op"&gt;&gt;&lt;/span&gt; &lt;span class="op"&gt;:&lt;/span&gt;t g&lt;/span&gt;
+&lt;span id="cb26-7"&gt;&lt;a href="#cb26-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;g ::&lt;/span&gt; (&lt;span class="dt"&gt;Typeable&lt;/span&gt; a, &lt;span class="dt"&gt;HasPretty&lt;/span&gt; a) &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb26-8"&gt;&lt;a href="#cb26-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb26-9"&gt;&lt;a href="#cb26-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;main ::&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; ()&lt;/span&gt;
+&lt;span id="cb26-10"&gt;&lt;a href="#cb26-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;main &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb26-11"&gt;&lt;a href="#cb26-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="co"&gt;-- I am using instances for `Bool` here since we haven&#39;t defined a &lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb26-12"&gt;&lt;a href="#cb26-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="co"&gt;-- global instance for `HasPretty Bool` yet.&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb26-13"&gt;&lt;a href="#cb26-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (withPretty (&lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;Bool&lt;/span&gt; &lt;span class="fu"&gt;show&lt;/span&gt;) (f &lt;span class="dt"&gt;True&lt;/span&gt;))&lt;/span&gt;
+&lt;span id="cb26-14"&gt;&lt;a href="#cb26-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="fu"&gt;putStrLn&lt;/span&gt; (withPretty (&lt;span class="dt"&gt;PrettyDict&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;Bool&lt;/span&gt; &lt;span class="fu"&gt;show&lt;/span&gt;) (g &lt;span class="dt"&gt;True&lt;/span&gt;))&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class="sourceCode" id="cb27"&gt;&lt;pre
+class="sourceCode bash"&gt;&lt;code class="sourceCode bash"&gt;&lt;span id="cb27-1"&gt;&lt;a href="#cb27-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;$&lt;/span&gt; ghc Main.hs &lt;span class="kw"&gt;&amp;&amp;&lt;/span&gt; &lt;span class="ex"&gt;./Main&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb27-2"&gt;&lt;a href="#cb27-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;[1&lt;/span&gt; of 1] Compiling Main             &lt;span class="er"&gt;(&lt;/span&gt; &lt;span class="ex"&gt;Main.hs,&lt;/span&gt; Main.o &lt;span class="kw"&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb27-3"&gt;&lt;a href="#cb27-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;Linking&lt;/span&gt; Main ...&lt;/span&gt;
+&lt;span id="cb27-4"&gt;&lt;a href="#cb27-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;True&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb27-5"&gt;&lt;a href="#cb27-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;Main:&lt;/span&gt; pretty: No instance found at runtime&lt;/span&gt;
+&lt;span id="cb27-6"&gt;&lt;a href="#cb27-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;CallStack&lt;/span&gt; &lt;span class="er"&gt;(&lt;/span&gt;&lt;span class="ex"&gt;from&lt;/span&gt; HasCallStack&lt;span class="kw"&gt;)&lt;/span&gt;&lt;span class="bu"&gt;:&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb27-7"&gt;&lt;a href="#cb27-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;  &lt;span class="ex"&gt;error,&lt;/span&gt; called at Main.hs:55:18 in main:Main&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Oh, come on!&lt;/p&gt;
+&lt;p&gt;As it turns out, when inferring the type for &lt;code&gt;g&lt;/code&gt;, GHC
+omits the implicit parameter constraint and instead hard wires the empty
+instance map from the global instance.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;withPretty&lt;/code&gt; still inserts a &lt;code&gt;HasPretty&lt;/code&gt;
+instance, so the compiler cannot stop us from calling &lt;code&gt;g&lt;/code&gt; and
+crashing at runtime.&lt;/p&gt;
+&lt;h2 id="conclusion"&gt;Conclusion&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;We are able to replace type classes with overridable
+&lt;code&gt;ImplicitParams&lt;/code&gt; and runtime type information based
+dispatch.&lt;/li&gt;
+&lt;li&gt;We can recover type safety, by using fake constraints for an empty
+class so that incoherence is not an issue.&lt;/li&gt;
+&lt;li&gt;To get proper global instances, we can extend the previously empty
+class with a base implementation. We only ever use this implementation
+if we are absolutely sure no local instance exists, so this is also
+safe.&lt;/li&gt;
+&lt;li&gt;Unfortunately, the global &lt;code&gt;ImplicitParams&lt;/code&gt; instance makes
+&lt;code&gt;?prettyInst&lt;/code&gt; constraints extremely brittle and mistakes like
+forgetting a type signature can remove the parameter and lead to runtime
+crashes.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;To safely use this, we &lt;em&gt;always&lt;/em&gt; have to make sure to&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;type out the entire
+&lt;code&gt;(Typeable a, HasPretty a, ?prettyInst :: InstMap)&lt;/code&gt;
+constraint&lt;/li&gt;
+&lt;li&gt;write a type signature whenever it might include
+&lt;code&gt;?prettyInst&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Now, should you ever use any of this in anything that you might
+possibly not want to break?&lt;/p&gt;
+&lt;p&gt;Of course not. Global implicit parameters seem to be mostly uncharted
+territory and I’m pretty sure their mere existence constitutes a
+bug.&lt;/p&gt;
+&lt;p&gt;Still, screwing around with broken features and pushing the limits of
+Haskell is fun. I had a blast writing this and I hope it was enjoyable
+to read as well! Maybe you even learned something today?&lt;/p&gt;
+&lt;section class="footnotes footnotes-end-of-document"
+role="doc-endnotes"&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id="fn1" role="doc-endnote"&gt;&lt;p&gt;If you have not already, you should
+probably read &lt;a href="/posts/unsafeCoerceDict.html"&gt;that post&lt;/a&gt; first
+to understand the context of this and what ‘incoherence’ even means.&lt;a
+href="#fnref1" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn2" role="doc-endnote"&gt;&lt;p&gt;As far as I can tell, the reason for
+this is to aid type inference. Without this dependency, GHC would be
+unable to figure out the type of &lt;code&gt;?x&lt;/code&gt; even when a
+&lt;code&gt;(?x :: Int)&lt;/code&gt; constraint is in scope. This is a little
+frustrating though, since the functional dependency is a bit of a lie.
+The type of &lt;code&gt;x&lt;/code&gt; is not &lt;em&gt;really&lt;/em&gt; only determined by its
+name. It is determined by its name and the instance in the surrounding
+context, but GHC cannot express that so it cheats and invents a
+functional dependency.&lt;a href="#fnref2" class="footnote-back"
+role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn3" role="doc-endnote"&gt;&lt;p&gt;The terminology is a bit confusing
+here. &lt;code&gt;TypeRep&lt;/code&gt; in &lt;code&gt;Data.Typeable&lt;/code&gt; is just a
+representation of regular compile-time types, that is carried in
+&lt;code&gt;Typeable&lt;/code&gt; constraints at runtime, not about the runtime
+representation of values as in &lt;code&gt;type role representational&lt;/code&gt;.
+Concretely this means, that newtypes like &lt;code&gt;Int&lt;/code&gt; and
+&lt;code&gt;Sum Int&lt;/code&gt; will have the same runtime representation, but
+their &lt;code&gt;TypeRep&lt;/code&gt;s will be different.&lt;a href="#fnref3"
+class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn4" role="doc-endnote"&gt;&lt;p&gt;The issue might have already happened
+when &lt;em&gt;defining&lt;/em&gt; the type synonym. I’m not sure but the end result
+is the same either way.&lt;a href="#fnref4" class="footnote-back"
+role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn5" role="doc-endnote"&gt;&lt;p&gt;Yeah…&lt;a href="#fnref5"
+class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;</description>
+</item><item>
     <title> Faking Local Instances with unsafeCoerce Dict</title>
     <link>https://prophetlabs.de/posts/unsafeCoerceDict.html</link>
     <guid isPremaLink="true">https://prophetlabs.de/posts/unsafeCoerceDict.html</guid>
