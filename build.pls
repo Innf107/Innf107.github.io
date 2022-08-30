@@ -7,14 +7,14 @@ let List = require("list.pls")
 let Async = require("async.pls")
 
 let extractTags(file) = {
-    let keys = lines(!grep "-Po" "(?<=<!--).+?(?=:)" file)
-    let values = lines(!grep "-Po" "(?<=:).+?(?=-->)" file)
-    List.zip(keys, values)
-}
+    let keys = lines(!grep "-Po" "(?<=<!--).+?(?=:)" file);
+    let values = lines(!grep "-Po" "(?<=:).+?(?=-->)" file);
+    List.zip(keys, values);
+};
 
 let replaceTags(tags, content) = {
     List.foldr(\(tag, r) -> replace("{{" ~ List.fst(tag) ~ "}}", List.snd(tag), r), content, tags)
-}
+};
 
 let escapeHTML(content) = {
     let toReplace = 
@@ -59,42 +59,43 @@ let buildPost(name) = {
         , ["body", htmlContent]
         ];
 
-    let renderedPost = replaceTags(postTags, !cat "templates/post.html")
+    let renderedPost = replaceTags(postTags, !cat "templates/post.html");
 
-    writeFile(htmlPath, renderedPost)
+    writeFile(htmlPath, renderedPost);
 
     let additionalTags = 
         [ ["content", escapeHTML(htmlContent)]
         , ["link", "https://prophetlabs.de/posts/" ~ name ~ ".html"]
-        ]
+        ];
 
     additionalTags ~ postTags
-}
+};
 
 let buildIndex(indexTags) = {
-    let summaryTemplate = !cat "templates/post-summary.html"
-    let summaries = List.foldr(\(tags, r) -> replaceTags(tags, summaryTemplate) ~ r, "", indexTags)
+    let summaryTemplate = !cat "templates/post-summary.html";
+    let summaries = List.foldr(\(tags, r) -> replaceTags(tags, summaryTemplate) ~ r, "", indexTags);
     buildPage("index.html", "index.html", static_tags ~ [["post-summaries", summaries]])
-}
+};
 
 let buildRSS(indexTags, pubDate) = {
-    let itemTemplate = !cat "templates/rss-item.xml"
-    let items = List.foldr(\(tags, r) -> replaceTags(tags, itemTemplate) ~ r, "", indexTags)
+    let itemTemplate = !cat "templates/rss-item.xml";
+    let items = List.foldr(\(tags, r) -> replaceTags(tags, itemTemplate) ~ r, "", indexTags);
     buildPage("rss.xml", "rss.xml", static_tags ~ [["rss-items", items], ["pubDate", pubDate], ["lastBuildDate", pubDate]])
-}
+};
 
 let buildScss() = {
-    let files = lines(!find "scss/post.scss" "-name" "*.scss")
+    let files = lines(!find "scss/post.scss" "-name" "*.scss");
     List.for(files, \file -> {
-        print("Building scss file: " ~ file)
+        print("Building scss file: " ~ file);
         !sassc file ("assets/" ~ (!basename "-s" ".scss" file) ~ ".css")
     })
-}
+};
 
 async buildScss()
 
 let posts = Async.all([
         async buildPost("unsafeCoerceDict"),
+        async buildPost("coherentIP"),
     ])
 
 async buildPage("about.html", "about.html", static_tags)

@@ -17,7 +17,23 @@
         <script src="https://kit.fontawesome.com/e4faccddf2.js" crossorigin="anonymous"></script>
     </head>
     <body>
-        {{header}}
+        <header>
+    <nav class="navbar">
+        <div class="navigation left">
+            <a href="/" class="header">Prophetlabs</a>
+        </div>
+        
+        <div class="navigation middle">
+        </div>
+        <div class="navigation right">
+            <button class="dark-mode" onclick="toggleDarkMode()">
+                <i id="dark-mode-dark" class="fa-regular fa-moon"></i>
+                <span id="dark-mode-light">🔆</span>
+            </button>
+            <a href="/about.html">About</a>
+        </div>
+    </nav>
+</header>
         <article class="about">
             <h1>About me</h1>
             <div style="display:grid; grid-template-columns: 1fr 3fr; gap: 10px">

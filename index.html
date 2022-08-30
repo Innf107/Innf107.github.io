@@ -19,11 +19,33 @@
         <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
     </head>
     <body>
-        {{header}}
+        <header>
+    <nav class="navbar">
+        <div class="navigation left">
+            <a href="/" class="header">Prophetlabs</a>
+        </div>
+        
+        <div class="navigation middle">
+        </div>
+        <div class="navigation right">
+            <button class="dark-mode" onclick="toggleDarkMode()">
+                <i id="dark-mode-dark" class="fa-regular fa-moon"></i>
+                <span id="dark-mode-light">🔆</span>
+            </button>
+            <a href="/about.html">About</a>
+        </div>
+    </nav>
+</header>
         <main class="index">
             <h1>Posts</h1>
             <ul class="post-summaries">
-                {{post-summaries}}
+                <li>
+    <a href="https://prophetlabs.de/posts/coherentIP.html"> Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code></a>
+    <span class="date"> 29 August 2022</span>
+</li><li>
+    <a href="https://prophetlabs.de/posts/unsafeCoerceDict.html"> Faking Local Instances with <code>unsafeCoerce Dict</code></a>
+    <span class="date"> 18 March 2022</span>
+</li>
             </ul>    
         
         </main>
