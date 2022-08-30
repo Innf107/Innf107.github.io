@@ -161,7 +161,7 @@ div.sourceCode{
 /* navbar */
 .navbar {
     display: grid;
-    grid-template-columns: 1fr 2fr 0.5fr 0.5fr;
+    grid-template-columns: 1fr 2fr 0.5fr;
     @media screen and (max-width: 768px) {
         font-size: 80%;
 
@@ -212,10 +212,16 @@ div.sourceCode{
 
 .dark-mode {
     border: none;
-    padding: 5px;
+    padding: 1rem;
+    padding-bottom: 0;
+    background: none;
+}
 
-    @include color(background-color, white, #393939, dm-bg);
-    @include color(color, #393939, white, dm-fg);
+#dark-mode-light {
+    color: white;
+    font-weight: 300;
+    /* hack to get a white emoji font */
+    filter: grayscale(100%) brightness(200%);
 }
 
 /* /navbar */
