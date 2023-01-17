@@ -6,14 +6,19 @@ ensure("sassc")
 let List = require("list.pls")
 let Async = require("async.pls")
 
+let listToMap(list) = {
+    List.foldr(\([k, v], r) -> insert(k, v, r), #{}, list)
+}
+
+let concatMap(f, list) = match list {
+    [] -> []
+    (x : xs) -> f(x) ~ concatMap(f, xs)
+}
+
 let extractTags(file) = {
     let keys = lines(!grep "-Po" "(?<=<!--).+?(?=:)" file);
     let values = lines(!grep "-Po" "(?<=:).+?(?=-->)" file);
     List.zip(keys, values);
-};
-
-let replaceTags(tags, content) = {
-    List.foldr(\(tag, r) -> replace("{{" ~ List.fst(tag) ~ "}}", List.snd(tag), r), content, tags)
 };
 
 let escapeHTML(content) = {
@@ -26,14 +31,45 @@ let escapeHTML(content) = {
     List.foldr(\(x, r) -> regexpReplace(List.fst(x), List.snd(x), r), content, toReplace)
 };
 
-let static_tags = [["header", !cat "static-html/header.html"]];
+let collectTooltips(content) = {    
+    let definitionSection = match regexpMatchGroups("<!--#tooltips\s*((?:[^a]|a)+?)\s*-->", content) {
+        [] -> ""
+        [[_, section]] -> section
+        sections -> fail("Invalid definition sections (there might be more than one?): " ~ toString(sections))
+    }
+
+    let tooltips = regexpMatchGroups("°(.+?)°\s*:\s*([^°]*)", definitionSection)
+
+    listToMap(concatMap(\[_, def, content] -> [[def, content], [escapeHTML(def), content]], tooltips))
+}
+
+let replaceTags(tags, content) = {
+    List.foldr(\(tag, r) -> replace("{{" ~ List.fst(tag) ~ "}}", List.snd(tag), r), content, tags)
+};
+
+let tooltipTemplate = !cat "templates/tooltip.html"
+
+let replaceTooltips(tooltips, content) = {
+    let addTooltipHTML(name) = {
+        let tooltipContent = tooltips[name]
+        if tooltipContent == null then
+            fail("Invalid tooltip: °" ~ name ~ "°")
+        else
+            replaceTags([["name", name], ["tooltip", tooltipContent]], tooltipTemplate)
+    }
+
+    regexpTransformAll("°(.*?)°", \[_, x] -> addTooltipHTML(x), content)
+}
+
+
+let static_tags = [["header", !cat "static-html/header.html"], ["common-head", !cat "static-html/common-head.html"]];
 
 let mdTags = [
         ["lang", !cat "static-html/lang-tag-start.html"]
     ,   ["/lang", !cat "static-html/lang-tag-end.html"]
     ]
 
-let pandoc(file) = 
+let pandoc(file, tooltips) = 
     replaceTags(mdTags, !cat file) | pandoc "--katex" "--syntax-definition=highlighting/polaris.xml"
 
 let buildPage(path, template, tags) = {
@@ -49,13 +85,14 @@ let buildPost(name) = {
 
     let htmlPath = "posts/" ~ name ~ ".html";
 
+    let tooltips = collectTooltips(!cat markdownPath)
+
     let tags = extractTags(markdownPath);
 
-    let htmlContent = replaceTags(tags, pandoc(markdownPath));
+    let htmlContent = replaceTooltips(tooltips, replaceTags(tags, pandoc(markdownPath, tooltips)));
 
-    let postTags = tags ~ 
-        [ ["header", !cat "static-html/header.html"]
-        , ["title-no-code", regexpTransformAll("<code>(.+?)</code>", \groups -> groups[1], List.lookup("title", tags))]
+    let postTags = tags ~ static_tags ~
+        [ ["title-no-code", regexpTransformAll("<code>(.+?)</code>", \groups -> groups[1], List.lookup("title", tags))]
         , ["body", htmlContent]
         ];
 

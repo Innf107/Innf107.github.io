@@ -11,18 +11,16 @@
         <meta name="twitter:description" content=" Coherent Local Instances with Dynamic Types and ImplicitParams">
         <meta name="twitter:type" content="summary">
 
-        <!--Fonts-->
+                <!--Fonts-->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">         
-        
+        <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Poppins:wght@400;700&display=swap" rel="stylesheet"> 
         <link rel="stylesheet" type="text/css" href="/assets/post.css">
 
         <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
 
         <!--Icons-->
         <script src="https://kit.fontawesome.com/e4faccddf2.js" crossorigin="anonymous"></script>
-
 
         <!--KaTeX-->
         <link defer rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css" integrity="sha384-Xi8rHCmBmhbuyyhbI88391ZKP2dmfnOl4rT9ZfRI7mLTdk1wblIUnrIq35nqwEvC" crossorigin="anonymous">
@@ -63,6 +61,7 @@
 </header>
         <article>
             <h1> Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code></h1>
+            <span class="date"> 29 August 2022</span>
             <!--title: Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code>-->
 <!--date: 29 August 2022-->
 <!--pubDate:2022-8-29-->
@@ -548,26 +547,25 @@ bug.</p>
 <p>Still, screwing around with broken features and pushing the limits of
 Haskell is fun. I had a blast writing this and I hope it was enjoyable
 to read as well! Maybe you even learned something today?</p>
-<section class="footnotes footnotes-end-of-document"
+<section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1" role="doc-endnote"><p>If you have not already, you should
-probably read <a href="/posts/unsafeCoerceDict.html">that post</a> first
-to understand the context of this and what ‘incoherence’ even means.<a
-href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2" role="doc-endnote"><p>As far as I can tell, the reason for
-this is to aid type inference. Without this dependency, GHC would be
-unable to figure out the type of <code>?x</code> even when a
-<code>(?x :: Int)</code> constraint is in scope. This is a little
-frustrating though, since the functional dependency is a bit of a lie.
-The type of <code>x</code> is not <em>really</em> only determined by its
-name. It is determined by its name and the instance in the surrounding
-context, but GHC cannot express that so it cheats and invents a
-functional dependency.<a href="#fnref2" class="footnote-back"
-role="doc-backlink">↩︎</a></p></li>
-<li id="fn3" role="doc-endnote"><p>The terminology is a bit confusing
-here. <code>TypeRep</code> in <code>Data.Typeable</code> is just a
+<li id="fn1"><p>If you have not already, you should probably read <a
+href="/posts/unsafeCoerceDict.html">that post</a> first to understand
+the context of this and what ‘incoherence’ even means.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>As far as I can tell, the reason for this is to aid type
+inference. Without this dependency, GHC would be unable to figure out
+the type of <code>?x</code> even when a <code>(?x :: Int)</code>
+constraint is in scope. This is a little frustrating though, since the
+functional dependency is a bit of a lie. The type of <code>x</code> is
+not <em>really</em> only determined by its name. It is determined by its
+name and the instance in the surrounding context, but GHC cannot express
+that so it cheats and invents a functional dependency.<a href="#fnref2"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>The terminology is a bit confusing here.
+<code>TypeRep</code> in <code>Data.Typeable</code> is just a
 representation of regular compile-time types, that is carried in
 <code>Typeable</code> constraints at runtime, not about the runtime
 representation of values as in <code>type role representational</code>.
@@ -575,12 +573,12 @@ Concretely this means, that newtypes like <code>Int</code> and
 <code>Sum Int</code> will have the same runtime representation, but
 their <code>TypeRep</code>s will be different.<a href="#fnref3"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4" role="doc-endnote"><p>The issue might have already happened
-when <em>defining</em> the type synonym. I’m not sure but the end result
-is the same either way.<a href="#fnref4" class="footnote-back"
+<li id="fn4"><p>The issue might have already happened when
+<em>defining</em> the type synonym. I’m not sure but the end result is
+the same either way.<a href="#fnref4" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn5" role="doc-endnote"><p>Yeah…<a href="#fnref5"
-class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Yeah…<a href="#fnref5" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
             <hr>

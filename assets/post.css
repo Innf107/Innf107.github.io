@@ -25,6 +25,9 @@ h1, h2 {
   text-transform: uppercase;
   margin-bottom: 0; }
 
+.date {
+  font-size: 150%; }
+
 article, main {
   margin-left: auto;
   margin-right: auto;
@@ -46,14 +49,16 @@ a {
 
 pre, .sourceCode {
   background-color: var(--bg-color-code);
-  overflow: auto; }
+  overflow: auto;
+  font-family: 'Fira Code', monospace; }
   body.dark {
     --bg-color-code: #393939; }
   body:not(.dark) {
     --bg-color-code: #e6e6e6; }
 
 code:not(.sourceCode) {
-  color: var(--inline-code-color); }
+  color: var(--inline-code-color);
+  font-family: 'Fira Code', monospace; }
   body.dark {
     --inline-code-color: #e60000; }
   body:not(.dark) {
@@ -154,8 +159,7 @@ div.sourceCode {
   @media screen and (max-width: 768px) {
     .navbar {
       font-size: 80%;
-      grid-template-columns: 1fr;
-      grid-template-rows: 1fr 0.5fr 0.5fr; }
+      grid-template-columns: 1fr 1fr; }
       .navbar .navigation.middle {
         display: none; }
       .navbar > * {
@@ -247,12 +251,18 @@ div.sourceCode {
   text-align: center; }
 
 article.about {
-  width: 50%; }
+  width: 50%;
+  background-color: var(--about-article-color);
+  padding: 3rem; }
+  body.dark {
+    --about-article-color: black; }
+  body:not(.dark) {
+    --about-article-color: white; }
 
 .social-list {
   display: grid;
   margin-top: 2rem;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
   text-align: center; }
   .social-list a {
     color: var(--social-color); }
@@ -267,4 +277,38 @@ article.about {
       body:not(.dark) {
         --social-color-hover: var(--link-light); }
 
+.about-background {
+  background-image: url(/assets/about-background.png);
+  background-size: contain;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: -100; }
+
 /* /about */
+.tooltip {
+  position: absolute;
+  background-color: #000000;
+  color: white;
+  padding: 1rem 1rem;
+  border-radius: 15px; }
+  .tooltip code {
+    color: var(--tooltip-code-color); }
+    body.dark {
+      --tooltip-code-color: #ff5050; }
+    body:not(.dark) {
+      --tooltip-code-color: #ff5050; }
+
+.tooltip-link {
+  text-decoration: none; }
+  .tooltip-link:hover {
+    color: var(--tooltip-code-hover-color); }
+    body.dark {
+      --tooltip-code-hover-color: rgba(0, 255, 85, 0.74); }
+    body:not(.dark) {
+      --tooltip-code-hover-color: #ff7b00; }
+
+.tooltip-wrapper:not(:hover) .tooltip {
+  display: none; }

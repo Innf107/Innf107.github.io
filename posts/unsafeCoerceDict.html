@@ -11,18 +11,16 @@
         <meta name="twitter:description" content=" Faking Local Instances with unsafeCoerce Dict">
         <meta name="twitter:type" content="summary">
 
-        <!--Fonts-->
+                <!--Fonts-->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">         
-        
+        <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Poppins:wght@400;700&display=swap" rel="stylesheet"> 
         <link rel="stylesheet" type="text/css" href="/assets/post.css">
 
         <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
 
         <!--Icons-->
         <script src="https://kit.fontawesome.com/e4faccddf2.js" crossorigin="anonymous"></script>
-
 
         <!--KaTeX-->
         <link defer rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css" integrity="sha384-Xi8rHCmBmhbuyyhbI88391ZKP2dmfnOl4rT9ZfRI7mLTdk1wblIUnrIq35nqwEvC" crossorigin="anonymous">
@@ -63,6 +61,7 @@
 </header>
         <article>
             <h1> Faking Local Instances with <code>unsafeCoerce Dict</code></h1>
+            <span class="date"> 18 March 2022</span>
             <!--title: Faking Local Instances with <code>unsafeCoerce Dict</code>-->
 <!--date: 18 March 2022-->
 <!--pubDate:2022-3-18-->
@@ -578,34 +577,32 @@ href="https://github.com/Innf107/fakedict">small library on github</a>,
 including <code>trace</code>.</p>
 <p>Ultimately, I hope that you learned a nice little trick today. You
 never know when it might come in handy.</p>
-<section class="footnotes footnotes-end-of-document"
+<section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1" role="doc-endnote"><p>In this particular example, most
-boilerplate could be eliminated by using <code>Sum</code>’s
-<code>Num</code> instance, but in most real scenarios it’s unfortunately
-not that simple.<a href="#fnref1" class="footnote-back"
-role="doc-backlink">↩︎</a></p></li>
-<li id="fn2" role="doc-endnote"><p>There are very good reasons why
-Haskell doesn’t have local instances, but we’ll get to that.<a
-href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3" role="doc-endnote"><p>Well… we’ll see about that.<a
-href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4" role="doc-endnote"><p>I told you, unsafeCoerce was
-dangerous…<a href="#fnref4" class="footnote-back"
-role="doc-backlink">↩︎</a></p></li>
-<li id="fn5" role="doc-endnote"><p><em>safe</em> here just means that it
-doesn’t segfault. We’ll get to other meanings of safe, don’t worry!<a
-href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6" role="doc-endnote"><p>Feel free to <a
+<li id="fn1"><p>In this particular example, most boilerplate could be
+eliminated by using <code>Sum</code>’s <code>Num</code> instance, but in
+most real scenarios it’s unfortunately not that simple.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>There are very good reasons why Haskell doesn’t have
+local instances, but we’ll get to that.<a href="#fnref2"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>Well… we’ll see about that.<a href="#fnref3"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>I told you, unsafeCoerce was dangerous…<a href="#fnref4"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p><em>safe</em> here just means that it doesn’t segfault.
+We’ll get to other meanings of safe, don’t worry!<a href="#fnref5"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>Feel free to <a
 href="https://github.com/Innf107/fakedict/tree/main/src/Fakedict/TH.hs">submit
 a pull request</a> if you would like to write a better implementation<a
 href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7" role="doc-endnote"><p>I did not use
-<code>withFakeDict</code> here, since <code>Show</code> has a few
-additional methods that we would have had to implement manually<a
-href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>I did not use <code>withFakeDict</code> here, since
+<code>Show</code> has a few additional methods that we would have had to
+implement manually<a href="#fnref7" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
             <hr>
