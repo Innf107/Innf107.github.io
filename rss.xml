@@ -3,10 +3,360 @@
         <title>Prophetlabs</title>
         <description>My Blog</description>
         <link>https://prophetlabs.de</link>
-        <pubDate>05-05-2022</pubDate>
-        <lastBuildDate>05-05-2022</lastBuildDate>
+        <pubDate>26-02-2022</pubDate>
+        <lastBuildDate>26-02-2022</lastBuildDate>
         <ttl>60</ttl>
         <item>
+    <title> Fast Map Union and Local Instances Through Instance Types </title>
+    <link>https://prophetlabs.de/posts/insttypes.html</link>
+    <guid isPremaLink="true">https://prophetlabs.de/posts/insttypes.html</guid>
+    <pubDate>2023-02-26</pubDate>
+    <description>
+
+
+
+&lt;p&gt;In part 3&lt;a href="#fn1" class="footnote-ref" id="fnref1"
+role="doc-noteref"&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt; of my &lt;a
+href="/posts/unsafeCoerceDict.html"&gt;crusade against&lt;/a&gt; &lt;a
+href="/posts/coherentIP.html"&gt;GHC’s coherence guarantees&lt;/a&gt;, I have
+actually done it! This time we will end up with a way to generate local
+type class instances without any asterisks about code breaking with
+optimizations. On the way, we are going to end up solving the dreaded
+Fast Map Union Problem, combining two of my favorite Haskell tricks, and
+discovering a bug in a previous version of GHC.&lt;/p&gt;
+&lt;p&gt;But before we get to that, let’s start at the beginning&lt;/p&gt;
+&lt;h2 id="what-even-is-this-fast-map-union-problem"&gt;What even is this
+‘fast Map union problem’?&lt;/h2&gt;
+&lt;p&gt;Let’s pretend that Haskell &lt;em&gt;did&lt;/em&gt; have consistent locally
+overridable type class instances. In that case, the interface for
+&lt;code&gt;Map&lt;/code&gt; would be completely broken.&lt;/p&gt;
+&lt;p&gt;Look at the type of &lt;code&gt;Data.Map.insert&lt;/code&gt;&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb1-1"&gt;&lt;a href="#cb1-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;insert ::&lt;/span&gt; &lt;span class="dt"&gt;Ord&lt;/span&gt; k &lt;span class="ot"&gt;=&gt;&lt;/span&gt; k &lt;span class="ot"&gt;-&gt;&lt;/span&gt; v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;See the issue? &lt;code&gt;Map&lt;/code&gt; is some kind of ordered tree
+internally, so it depends on the &lt;code&gt;Ord&lt;/code&gt; instance being
+consistent across different operations, but with local instances, we
+don’t have any guarantees like that.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb2-1"&gt;&lt;a href="#cb2-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="co"&gt;-- This uses the regular instance for Ord Int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-2"&gt;&lt;a href="#cb2-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;let&lt;/span&gt; &lt;span class="fu"&gt;map&lt;/span&gt; &lt;span class="ot"&gt;=&lt;/span&gt; insert (&lt;span class="dv"&gt;1&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;) &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="fu"&gt;mempty&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-3"&gt;&lt;a href="#cb2-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-4"&gt;&lt;a href="#cb2-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="co"&gt;-- This uses a different, incompatible instance on the same map!&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-5"&gt;&lt;a href="#cb2-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withLocalOrd reverseOrdInt &lt;span class="op"&gt;$&lt;/span&gt; insert (&lt;span class="dv"&gt;2&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;) &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="fu"&gt;map&lt;/span&gt; &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;If you think about this for a bit, you may come up with a solution:
+You can store the instance in the map. This is how most map
+implementations in other languages work after all.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb3"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb3-1"&gt;&lt;a href="#cb3-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkMap&lt;/span&gt; (&lt;span class="dt"&gt;Dict&lt;/span&gt; (&lt;span class="dt"&gt;Ord&lt;/span&gt; k)) (&lt;span class="dt"&gt;ActualMapImplementation&lt;/span&gt; k v)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And now the type of insert doesn’t mention &lt;code&gt;Ord&lt;/code&gt; at all
+anymore so everything is sunshine and roses&lt;/p&gt;
+&lt;div class="sourceCode" id="cb4"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb4-1"&gt;&lt;a href="#cb4-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;insert ::&lt;/span&gt; k &lt;span class="ot"&gt;-&gt;&lt;/span&gt; v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;…until it isn’t! Consider the type of &lt;code&gt;union&lt;/code&gt; now&lt;/p&gt;
+&lt;div class="sourceCode" id="cb5"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb5-1"&gt;&lt;a href="#cb5-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;union ::&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;What happens if both maps use different &lt;code&gt;Ord k&lt;/code&gt; instances?
+We have no way to statically ensure that they don’t. The way to solve
+this in practice would be to just reinsert every value from one map in
+the other, but that means that union is now drastically slower than it
+would be if we could assume that both maps use the same instance (It’s
+now at least linear in the size of one map vs. logarithmic in that of
+the smaller one).&lt;/p&gt;
+&lt;h2 id="instance-types"&gt;Instance Types&lt;/h2&gt;
+&lt;p&gt;Now, what we really need here is a way to statically ensure that both
+maps use the same &lt;code&gt;Ord&lt;/code&gt; implementation. In a dependently
+typed language, one could just carry the instance dictionary in the
+type&lt;/p&gt;
+&lt;div class="sourceCode" id="cb6"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb6-1"&gt;&lt;a href="#cb6-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v (&lt;span class="ot"&gt;inst ::&lt;/span&gt; &lt;span class="dt"&gt;Ord&lt;/span&gt; k) &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;...&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb6-2"&gt;&lt;a href="#cb6-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb6-3"&gt;&lt;a href="#cb6-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;union ::&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v inst &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v inst &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Map&lt;/span&gt; k v inst&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;But we cannot do that in Haskell (yet?), so we need a few more
+tricks. What we absolutely &lt;em&gt;need&lt;/em&gt; to do is to somehow move the
+used instance to the type level, so let’s start there. While we cannot
+directly depend on the instance value, we can define a dummy type as a
+stand-in.&lt;/p&gt;
+&lt;p&gt;With this new type, we can write a version of &lt;code&gt;Ord&lt;/code&gt; that
+carries its concrete instance in the type. Every function with an
+&lt;code&gt;Ord&lt;/code&gt; constraint should now be polymorphic over this instance
+parameter.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb7"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb7-1"&gt;&lt;a href="#cb7-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;class&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="op"&gt;|&lt;/span&gt; inst &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-2"&gt;&lt;a href="#cb7-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;    compareI ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Ordering&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-3"&gt;&lt;a href="#cb7-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb7-4"&gt;&lt;a href="#cb7-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;RegularOrdInt&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-5"&gt;&lt;a href="#cb7-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; &lt;span class="dt"&gt;RegularOrdInt&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-6"&gt;&lt;a href="#cb7-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    compareI &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-7"&gt;&lt;a href="#cb7-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb7-8"&gt;&lt;a href="#cb7-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;ReverseOrdInt&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-9"&gt;&lt;a href="#cb7-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;instance&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; &lt;span class="dt"&gt;ReverseOrdInt&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-10"&gt;&lt;a href="#cb7-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    compareI x y &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;case&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt; x y &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-11"&gt;&lt;a href="#cb7-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;LT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;GT&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-12"&gt;&lt;a href="#cb7-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;EQ&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;EQ&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb7-13"&gt;&lt;a href="#cb7-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;GT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;LT&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And now we can finally parameterize Map over the used
+&lt;code&gt;Ord&lt;/code&gt; instance!&lt;/p&gt;
+&lt;div class="sourceCode" id="cb8"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb8-1"&gt;&lt;a href="#cb8-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="op"&gt;...&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb8-2"&gt;&lt;a href="#cb8-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb8-3"&gt;&lt;a href="#cb8-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;insert ::&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst k &lt;span class="ot"&gt;=&gt;&lt;/span&gt; k &lt;span class="ot"&gt;-&gt;&lt;/span&gt; v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v&lt;/span&gt;
+&lt;span id="cb8-4"&gt;&lt;a href="#cb8-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;union ::&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst k &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst k v&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code&gt;union&lt;/code&gt; statically ensures that both maps agree on their
+instances.&lt;/p&gt;
+&lt;p&gt;The only ‘issue’ here is that we lose some inference. This is more or
+less unavoidable if we want multiple instances to coexist (well, more on
+that later). We need to tell Haskell what instance to use at some point,
+but it’s not that bad, since at least for &lt;code&gt;IMap&lt;/code&gt;s, which
+carry the instance in their type, we only need to do this once.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb9"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb9-1"&gt;&lt;a href="#cb9-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;let&lt;/span&gt; map1 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; insert &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; empty &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;RegularOrdInt&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb9-2"&gt;&lt;a href="#cb9-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;let&lt;/span&gt; map2 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;ReverseOrdInt&lt;/span&gt; &lt;span class="dv"&gt;3&lt;/span&gt; &lt;span class="dv"&gt;3&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; insert &lt;span class="dv"&gt;4&lt;/span&gt; &lt;span class="dv"&gt;4&lt;/span&gt; &lt;span class="op"&gt;$&lt;/span&gt; empty&lt;/span&gt;
+&lt;span id="cb9-3"&gt;&lt;a href="#cb9-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb9-4"&gt;&lt;a href="#cb9-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;union map1 map2 &lt;span class="co"&gt;-- Type error: Couldn&#39;t match type &#39;RegularOrdInt&#39; with `ReverseOrdInt`&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2 id="how-do-local-instances-fit-into-this"&gt;How do local instances fit
+into this?&lt;/h2&gt;
+&lt;p&gt;Quite well as it turns out! We can combine two of my favorite Haskell
+tricks to implement them in current Haskell (You can stop pretending
+that they exist. We are going to implement them for real now)&lt;/p&gt;
+&lt;p&gt;Local instances might differ between different executions of the same
+code, so we need to make sure that the instance types can only be used
+locally and cannot escape. If this sounds familiar that is because there
+is a decent chance that you have used something similar before: &lt;a
+href="https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html#v:runST"&gt;&lt;code&gt;runST&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;ST&lt;/code&gt; is a monad that is used for local mutability inside
+pure code. You can use it to create &lt;code&gt;STRef&lt;/code&gt;s and mutate them,
+just like you would in your favorite imperative language&lt;a href="#fn2"
+class="footnote-ref" id="fnref2" role="doc-noteref"&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;,
+except that Haskell, by virtue of being a pure language, needs to make
+absolutely sure that you never ever return an &lt;code&gt;STRef&lt;/code&gt; from
+&lt;code&gt;runST&lt;/code&gt;. Doing so would allow effects in one usage of the
+supposedly pure &lt;code&gt;runST&lt;/code&gt; to affect the result of another
+one.&lt;/p&gt;
+&lt;p&gt;How does &lt;code&gt;ST&lt;/code&gt; do this? It uses higher-rank types!&lt;/p&gt;
+&lt;div class="sourceCode" id="cb10"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb10-1"&gt;&lt;a href="#cb10-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;newSTRef ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;ST&lt;/span&gt; s (&lt;span class="dt"&gt;STRef&lt;/span&gt; s a)&lt;/span&gt;
+&lt;span id="cb10-2"&gt;&lt;a href="#cb10-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;runST ::&lt;/span&gt; (&lt;span class="kw"&gt;forall&lt;/span&gt; s&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;ST&lt;/span&gt; s a) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;If you have never seen this before, you’re probably quite confused
+right now. The type &lt;code&gt;forall s. ST s a&lt;/code&gt; specifies that the
+argument to &lt;code&gt;runST&lt;/code&gt; needs to be an &lt;code&gt;ST&lt;/code&gt; value that
+works for any possible instantiation of &lt;code&gt;s&lt;/code&gt;. Crucially for
+this case, this means that the &lt;code&gt;s&lt;/code&gt; variable is, unlike
+&lt;code&gt;a&lt;/code&gt;, &lt;em&gt;not&lt;/em&gt; a type parameter of &lt;code&gt;runST&lt;/code&gt;
+itself, but actually one of &lt;em&gt;the arguments to runST&lt;/em&gt;. This is
+much clearer if we write &lt;code&gt;runST&lt;/code&gt; with an explicit outer
+&lt;code&gt;forall&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb11"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb11-1"&gt;&lt;a href="#cb11-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;runST ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a&lt;span class="op"&gt;.&lt;/span&gt; (&lt;span class="kw"&gt;forall&lt;/span&gt; s&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;ST&lt;/span&gt; s a) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now, the reason this ensures that no STRefs escape is that the
+&lt;code&gt;s&lt;/code&gt; parameter of the &lt;code&gt;STRef&lt;/code&gt; is the same as that
+of the containing &lt;code&gt;ST&lt;/code&gt; monad. If you &lt;em&gt;were&lt;/em&gt; able to
+return an &lt;code&gt;STRef&lt;/code&gt; from the argument to &lt;code&gt;runST&lt;/code&gt;,
+e.g. by passing something of type
+&lt;code&gt;forall s. ST s (STRef s Int)&lt;/code&gt;, what type would the result
+have? Blindly substituting would yield &lt;code&gt;STRef s Int&lt;/code&gt;, but
+what is &lt;code&gt;s&lt;/code&gt; now? Previously, &lt;code&gt;s&lt;/code&gt; was bound by the
+&lt;code&gt;forall&lt;/code&gt; in the type of the argument to &lt;code&gt;runST&lt;/code&gt;,
+but that &lt;code&gt;forall&lt;/code&gt; does not exist anymore! This is why GHC
+will not accept this code and complain about an ‘escaping skolem’.&lt;/p&gt;
+&lt;p&gt;We can use exactly the same trick for local type class instances to
+invent an instance type that only exists locally! If we can implement a
+function of the following type, then this will ensure that instance
+types cannot possibly escape.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb12"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb12-1"&gt;&lt;a href="#cb12-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withOrdI ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; (a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Ordering&lt;/span&gt;) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; (&lt;span class="kw"&gt;forall&lt;/span&gt; inst&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; b) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now, how do we implement this function? If you read &lt;a
+href="/posts/unsafeCoerceDict.html"&gt;the first post in this series&lt;/a&gt;,
+you will probably know the answer already.&lt;/p&gt;
+&lt;p&gt;At runtime, GHC represents type classes via a technique called
+dictionary passing. This means that a function with an &lt;code&gt;Ord&lt;/code&gt;
+constraint like &lt;code&gt;Ord a =&gt; a -&gt; a -&gt; Ordering&lt;/code&gt; will
+be turned into a function that &lt;em&gt;takes an implementation of that type
+class as an argument&lt;/em&gt; (&lt;code&gt;Ord a -&gt; a -&gt; a&lt;/code&gt;). This
+implementation, called a dictionary, is just a regular record-like data
+type that contains an implementation for every method.&lt;/p&gt;
+&lt;p&gt;Using &lt;code&gt;GADT&lt;/code&gt;s, we can capture this dictionary in a
+value.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb13"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb13-1"&gt;&lt;a href="#cb13-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb13-2"&gt;&lt;a href="#cb13-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;OrdIDict&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Ord&lt;/span&gt; a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;If we are now able to replicate the structure of this
+&lt;code&gt;OrdIDict&lt;/code&gt; exactly, but with a custom record of methods, we
+can use &lt;code&gt;unsafeCoerce&lt;/code&gt; to convert it to a functional
+&lt;code&gt;OrdIDict a&lt;/code&gt;. By pattern matching on the result, we can
+release the dictionary back into a regular instance, which now contains
+our handwritten type class instance!&lt;/p&gt;
+&lt;p&gt;Instinctively, your definition of &lt;code&gt;OrdIDict&lt;/code&gt; would
+probably look like this&lt;/p&gt;
+&lt;div class="sourceCode" id="cb14"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb14-1"&gt;&lt;a href="#cb14-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; inst a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb14-2"&gt;&lt;a href="#cb14-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;OrdIDict&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; inst a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This is not going to work though. We need to invent a new type for
+&lt;code&gt;inst&lt;/code&gt;, so &lt;code&gt;OrdIDict&lt;/code&gt; cannot take it as a
+parameter. Thanks to Haskell’s support for existential types, this is
+not actually an issue, since we can just leave it off&lt;a href="#fn3"
+class="footnote-ref" id="fnref3"
+role="doc-noteref"&gt;&lt;sup&gt;3&lt;/sup&gt;&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb15"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb15-1"&gt;&lt;a href="#cb15-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb15-2"&gt;&lt;a href="#cb15-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;OrdIDict&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code&gt;OrdI&lt;/code&gt; only has a single method, so it will be represented
+by the equivalent of a newtype record at runtime. This is erased
+entirely, so we do not need to build a record around our
+&lt;code&gt;a -&gt; a -&gt; Ordering&lt;/code&gt; function.&lt;/p&gt;
+&lt;p&gt;The &lt;code&gt;OrdIDict&lt;/code&gt; wrapper adds some indirection though, so we
+need to replicate that.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb16"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb16-1"&gt;&lt;a href="#cb16-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;FakeDict&lt;/span&gt; a &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;FakeDict&lt;/span&gt; a&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;All preparations are complete. We are ready for the magic&lt;a
+href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"&gt;&lt;sup&gt;4&lt;/sup&gt;&lt;/a&gt;!&lt;/p&gt;
+&lt;div class="sourceCode" id="cb17"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb17-1"&gt;&lt;a href="#cb17-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withOrdI ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; (a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Ordering&lt;/span&gt;) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; (&lt;span class="kw"&gt;forall&lt;/span&gt; inst&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; b) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;
+&lt;span id="cb17-2"&gt;&lt;a href="#cb17-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withOrdI dict body &lt;span class="ot"&gt;=&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb17-3"&gt;&lt;a href="#cb17-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; unsafeCoerce (&lt;span class="dt"&gt;FakeDict&lt;/span&gt; dict)&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb17-4"&gt;&lt;a href="#cb17-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        (&lt;span class="dt"&gt;OrdIDict&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; body &lt;span class="op"&gt;@&lt;/span&gt;inst&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And that’s… it!&lt;/p&gt;
+&lt;p&gt;Well, not quite. If you paid very close attention, you may notice
+that we have no way to bind the &lt;code&gt;inst&lt;/code&gt; type variable in the
+&lt;code&gt;(forall inst. OrdI inst a =&gt; b)&lt;/code&gt; argument. This means if
+we put a lambda there, we cannot actually mention &lt;code&gt;inst&lt;/code&gt;
+anywhere. This is easy enough to solve by introducing a &lt;a
+href="https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-Proxy.html#t:Proxy"&gt;&lt;code&gt;Proxy&lt;/code&gt;&lt;/a&gt;
+value.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb18"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb18-1"&gt;&lt;a href="#cb18-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;withOrdIProxy ::&lt;/span&gt; &lt;span class="kw"&gt;forall&lt;/span&gt; a b&lt;span class="op"&gt;.&lt;/span&gt; (a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;Ordering&lt;/span&gt;) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; (&lt;span class="kw"&gt;forall&lt;/span&gt; inst&lt;span class="op"&gt;.&lt;/span&gt; &lt;span class="dt"&gt;OrdI&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; &lt;span class="dt"&gt;Proxy&lt;/span&gt; inst &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; b&lt;/span&gt;
+&lt;span id="cb18-2"&gt;&lt;a href="#cb18-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;withOrdIProxy dict body &lt;span class="ot"&gt;=&lt;/span&gt; &lt;/span&gt;
+&lt;span id="cb18-3"&gt;&lt;a href="#cb18-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;case&lt;/span&gt; unsafeCoerce (&lt;span class="dt"&gt;FakeDict&lt;/span&gt; dict)&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;OrdIDict&lt;/span&gt; a &lt;span class="kw"&gt;of&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb18-4"&gt;&lt;a href="#cb18-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        (&lt;span class="dt"&gt;OrdIDict&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; body &lt;span class="op"&gt;@&lt;/span&gt;inst (&lt;span class="dt"&gt;Proxy&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2 id="lets-try-it-out"&gt;Let’s try it out!&lt;/h2&gt;
+&lt;p&gt;We can start with some concrete instances&lt;/p&gt;
+&lt;div class="sourceCode" id="cb19"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb19-1"&gt;&lt;a href="#cb19-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;map1 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="dv"&gt;1&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;Int&lt;/span&gt;)&lt;/span&gt;
+&lt;span id="cb19-2"&gt;&lt;a href="#cb19-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;map2 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="dv"&gt;2&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;Int&lt;/span&gt;)&lt;/span&gt;
+&lt;span id="cb19-3"&gt;&lt;a href="#cb19-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb19-4"&gt;&lt;a href="#cb19-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;map3 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;3&lt;/span&gt; &lt;span class="dv"&gt;3&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;ReverseIntOrd&lt;/span&gt;)&lt;/span&gt;
+&lt;span id="cb19-5"&gt;&lt;a href="#cb19-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;map4 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;4&lt;/span&gt; &lt;span class="dv"&gt;4&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;&lt;span class="dt"&gt;ReverseIntOrd&lt;/span&gt;)&lt;/span&gt;
+&lt;span id="cb19-6"&gt;&lt;a href="#cb19-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb19-7"&gt;&lt;a href="#cb19-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;fine1 &lt;span class="ot"&gt;=&lt;/span&gt; union map1 map2&lt;/span&gt;
+&lt;span id="cb19-8"&gt;&lt;a href="#cb19-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;fine2 &lt;span class="ot"&gt;=&lt;/span&gt; union map3 map4&lt;/span&gt;
+&lt;span id="cb19-9"&gt;&lt;a href="#cb19-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb19-10"&gt;&lt;a href="#cb19-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;notFine &lt;span class="ot"&gt;=&lt;/span&gt; union map1 map3 &lt;span class="co"&gt;-- fails!&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Looking good. Now let’s try local instances&lt;/p&gt;
+&lt;div class="sourceCode" id="cb20"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb20-1"&gt;&lt;a href="#cb20-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;local &lt;span class="ot"&gt;=&lt;/span&gt; withOrdIProxy &lt;span class="fu"&gt;compare&lt;/span&gt; \(&lt;span class="dt"&gt;Proxy&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb20-2"&gt;&lt;a href="#cb20-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt;&lt;span class="ot"&gt; localMap1 ::&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; inst &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="op"&gt;@&lt;/span&gt;inst &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="dv"&gt;1&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;inst)&lt;/span&gt;
+&lt;span id="cb20-3"&gt;&lt;a href="#cb20-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    ()&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class="sourceCode" id="cb21"&gt;&lt;pre
+class="sourceCode bash"&gt;&lt;code class="sourceCode bash"&gt;&lt;span id="cb21-1"&gt;&lt;a href="#cb21-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;$&lt;/span&gt; ghc-9.2 insttypes.hs&lt;/span&gt;
+&lt;span id="cb21-2"&gt;&lt;a href="#cb21-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ex"&gt;insttypes.hs:80:42:&lt;/span&gt; error:&lt;/span&gt;
+&lt;span id="cb21-3"&gt;&lt;a href="#cb21-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="ex"&gt;•&lt;/span&gt; Could not deduce &lt;span class="er"&gt;(&lt;/span&gt;&lt;span class="ex"&gt;OrdI&lt;/span&gt; &lt;span class="er"&gt;(&lt;/span&gt;&lt;span class="ex"&gt;*&lt;/span&gt;&lt;span class="kw"&gt;)&lt;/span&gt; &lt;span class="ex"&gt;Int&lt;/span&gt;&lt;span class="kw"&gt;)&lt;/span&gt; &lt;span class="ex"&gt;arising&lt;/span&gt; from a use of ‘insert’&lt;/span&gt;
+&lt;span id="cb21-4"&gt;&lt;a href="#cb21-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;      &lt;span class="ex"&gt;from&lt;/span&gt; the context: OrdI inst a0&lt;/span&gt;
+&lt;span id="cb21-5"&gt;&lt;a href="#cb21-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="ex"&gt;...&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Huh. That is… strange. It looks like for some strange reason, GHC
+defaults the &lt;code&gt;inst&lt;/code&gt; parameter to… &lt;code&gt;(*)&lt;/code&gt;&lt;a
+href="#fn5" class="footnote-ref" id="fnref5"
+role="doc-noteref"&gt;&lt;sup&gt;5&lt;/sup&gt;&lt;/a&gt;? Even if we add as many type
+annotations as physically possible?&lt;/p&gt;
+&lt;p&gt;If this smells like a bug in GHC, that is &lt;strong&gt;because it
+is!&lt;/strong&gt; Or well, &lt;em&gt;was&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;If you run the same example with GHC 9.4, it will compile without
+complaining.&lt;/p&gt;
+&lt;p&gt;Now, let’s try that again&lt;/p&gt;
+&lt;div class="sourceCode" id="cb22"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb22-1"&gt;&lt;a href="#cb22-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;local &lt;span class="ot"&gt;=&lt;/span&gt; withOrdIProxy &lt;span class="fu"&gt;compare&lt;/span&gt; \(&lt;span class="dt"&gt;Proxy&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst) &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="kw"&gt;do&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb22-2"&gt;&lt;a href="#cb22-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; localMap1 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;1&lt;/span&gt; &lt;span class="dv"&gt;1&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;inst)&lt;/span&gt;
+&lt;span id="cb22-3"&gt;&lt;a href="#cb22-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; localMap2 &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="dv"&gt;2&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;inst)&lt;/span&gt;
+&lt;span id="cb22-4"&gt;&lt;a href="#cb22-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb22-5"&gt;&lt;a href="#cb22-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; perfectlyFine &lt;span class="ot"&gt;=&lt;/span&gt; union localMap1 localMap2&lt;/span&gt;
+&lt;span id="cb22-6"&gt;&lt;a href="#cb22-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb22-7"&gt;&lt;a href="#cb22-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt;&lt;span class="ot"&gt; notFine ::&lt;/span&gt; &lt;span class="dt"&gt;IMap&lt;/span&gt; &lt;span class="dt"&gt;RegularIntOrd&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="ot"&gt;=&lt;/span&gt; insert &lt;span class="op"&gt;@&lt;/span&gt;inst &lt;span class="dv"&gt;2&lt;/span&gt; &lt;span class="dv"&gt;2&lt;/span&gt; (empty &lt;span class="op"&gt;@&lt;/span&gt;inst) &lt;span class="co"&gt;-- fails!&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb22-8"&gt;&lt;a href="#cb22-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; notFine2 &lt;span class="ot"&gt;=&lt;/span&gt; union localMap1 map1 &lt;span class="co"&gt;-- also fails!&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb22-9"&gt;&lt;a href="#cb22-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb22-10"&gt;&lt;a href="#cb22-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    localMap1 &lt;span class="co"&gt;-- fails!&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Perfect!&lt;/p&gt;
+&lt;h3 id="do-we-have-to-annotate-the-instance-every-time"&gt;Do we have to
+annotate the instance every time?&lt;/h3&gt;
+&lt;p&gt;In this specific example with &lt;code&gt;IMap&lt;/code&gt;, the number of type
+annotations required was quite manageable, but in code that uses
+&lt;code&gt;OrdI&lt;/code&gt; like regular &lt;code&gt;Ord&lt;/code&gt;, this is much less
+pleasant&lt;/p&gt;
+&lt;div class="sourceCode" id="cb23"&gt;&lt;pre
+class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb23-1"&gt;&lt;a href="#cb23-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;min3 ::&lt;/span&gt; &lt;span class="dt"&gt;IOrd&lt;/span&gt; inst a &lt;span class="ot"&gt;=&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; a&lt;/span&gt;
+&lt;span id="cb23-2"&gt;&lt;a href="#cb23-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;min3 x y z &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="kw"&gt;case&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst x y &lt;span class="kw"&gt;of&lt;/span&gt; &lt;span class="co"&gt;-- needs a type application!&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-3"&gt;&lt;a href="#cb23-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;GT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="kw"&gt;case&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst y z &lt;span class="kw"&gt;of&lt;/span&gt; &lt;span class="co"&gt;-- this one as well&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-4"&gt;&lt;a href="#cb23-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;GT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; z&lt;/span&gt;
+&lt;span id="cb23-5"&gt;&lt;a href="#cb23-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        _ &lt;span class="ot"&gt;-&gt;&lt;/span&gt; y&lt;/span&gt;
+&lt;span id="cb23-6"&gt;&lt;a href="#cb23-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    _ &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="kw"&gt;case&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst x z &lt;span class="kw"&gt;of&lt;/span&gt; &lt;span class="co"&gt;-- same here&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-7"&gt;&lt;a href="#cb23-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        &lt;span class="dt"&gt;GT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="kw"&gt;case&lt;/span&gt; &lt;span class="fu"&gt;compare&lt;/span&gt; &lt;span class="op"&gt;@&lt;/span&gt;inst y z &lt;span class="kw"&gt;of&lt;/span&gt; &lt;span class="co"&gt;-- also here&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb23-8"&gt;&lt;a href="#cb23-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            &lt;span class="dt"&gt;GT&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; z&lt;/span&gt;
+&lt;span id="cb23-9"&gt;&lt;a href="#cb23-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;            _ &lt;span class="ot"&gt;-&gt;&lt;/span&gt; y&lt;/span&gt;
+&lt;span id="cb23-10"&gt;&lt;a href="#cb23-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;        _ &lt;span class="ot"&gt;-&gt;&lt;/span&gt; x&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Used directly like this, this technique is really just &lt;a
+href="https://www.haskellforall.com/2012/05/scrap-your-type-classes.html"&gt;Scrap
+your type classes&lt;/a&gt; with extra steps.&lt;/p&gt;
+&lt;p&gt;This is frustrating because we are just running up against GHC’s
+stubbornness here. There is only a single possible instance for
+&lt;code&gt;IOrd inst a&lt;/code&gt; in scope, but GHC doesn’t want to choose it.
+Usually, this behavior might make sense, but it’s really not helpful for
+us.&lt;/p&gt;
+&lt;p&gt;Fortunately for us though, we are not the first to run into this
+issue! &lt;a
+href="https://hackage.haskell.org/package/polysemy"&gt;Polysemy&lt;/a&gt;, the
+popular effect system library, had the exact same problem. Polysemy
+makes it possible to define effects of the form
+&lt;code&gt;Member Effect r&lt;/code&gt; over a set of effects &lt;code&gt;r&lt;/code&gt;. The
+issue here is that, unlike &lt;a
+href="https://hackage.haskell.org/package/mtl"&gt;mtl&lt;/a&gt;, Polysemy allows
+duplicate effects, so GHC again doesn’t trust that you really wanted to
+use the constraint from the signature and not another, currently
+unwritten one.&lt;/p&gt;
+&lt;p&gt;How did Polysemy solve that? They wrote &lt;a
+href="https://hackage.haskell.org/package/polysemy-plugin"&gt;a type
+checker plugin&lt;/a&gt; that disambiguates Polysemy constraints whenever
+there is exactly one relevant instance in scope.&lt;/p&gt;
+&lt;p&gt;This is exactly what we want, so we could probably copy most of
+it.&lt;/p&gt;
+&lt;p&gt;But that is a topic for a future blog post.&lt;/p&gt;
+&lt;h2 id="conclusion"&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;We covered quite a bit of ground there.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;We parameterized type classes over a type representing the
+instance&lt;/li&gt;
+&lt;li&gt;This made it possible to statically ensure that maps can safely be
+merged in logarithmic time, even in the presence of local instances&lt;/li&gt;
+&lt;li&gt;We managed to implement local type class instances that are actually
+safe, even in the presence of optimizations&lt;/li&gt;
+&lt;li&gt;We discovered a bug in GHC 9.2&lt;/li&gt;
+&lt;li&gt;There is probably a way to avoid unnecessary type applications with
+a GHC plugin&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This is the first time in this series that I can write a conclusion
+without begging you to ‘please never ever use this anywhere near
+production’. This technique still relies on GHC’s internal type class
+representation (and you should always be careful around
+&lt;code&gt;unsafeCoerce&lt;/code&gt;) but so does the popular &lt;a
+href="https://hackage.haskell.org/package/reflection"&gt;reflection&lt;/a&gt;
+package, so you should be fine.&lt;/p&gt;
+&lt;p&gt;If you want to try this for yourself, you can get the code &lt;a
+href="https://gist.github.com/Innf107/53f1b6e2fdbb1ca0a49d1f75375c036c"&gt;in
+a gist&lt;/a&gt;. Just make sure to use GHC 9.4 or above.&lt;/p&gt;
+&lt;section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes"&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id="fn1"&gt;&lt;p&gt;You don’t need to have read any of the previous posts to
+understand this, don’t worry. On the other hand, if you like this one,
+you will probably enjoy the others as well ;)&lt;a href="#fnref1"
+class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn2"&gt;&lt;p&gt;If your favorite imperative language is OCaml or
+Standard ML that is.&lt;a href="#fnref2" class="footnote-back"
+role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn3"&gt;&lt;p&gt;In fact, pattern matching on a value containing an
+existentially quantified type variable will turn that variable into a
+‘skolem’, just like the higher rank type in the &lt;code&gt;runST&lt;/code&gt;
+example, so we are truly conjuring a new type from thin air with this.&lt;a
+href="#fnref3" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn4"&gt;&lt;p&gt;This is an OCaml joke. Don’t worry about it.&lt;a
+href="#fnref4" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id="fn5"&gt;&lt;p&gt;&lt;code&gt;(*)&lt;/code&gt; is another way of writing &lt;a
+href="https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-Kind.html#t:Type"&gt;&lt;code&gt;Type&lt;/code&gt;&lt;/a&gt;,
+the type of types. The only reason this is even valid is that modern GHC
+Haskell has dependent kinds and &lt;code&gt;Type : Type&lt;/code&gt;.&lt;a
+href="#fnref5" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;</description>
+</item><item>
     <title> Coherent Local Instances with Dynamic Types and ImplicitParams</title>
     <link>https://prophetlabs.de/posts/coherentIP.html</link>
     <guid isPremaLink="true">https://prophetlabs.de/posts/coherentIP.html</guid>
