@@ -1,7 +1,7 @@
 <!--title: Fast Map Union and Local Instances Through Instance Types -->
 <!--date: 26 February 2023-->
 <!--pubDate:2023-02-26-->
-<!--reddit:https://example.com/GoodJobYouClickedOnThisBeforeICouldUpdateTheLinkHereIsAnImaginaryCookieForYou-->
+<!--reddit:https://www.reddit.com/r/haskell/comments/11c27fh/fast_map_union_and_local_instances_through/-->
 
 In part 3[^previous] of my [crusade against](/posts/unsafeCoerceDict.html) [GHC's coherence guarantees](/posts/coherentIP.html), I have actually done it! This time we will end up with a way to generate local type class instances without any asterisks about code breaking with optimizations. On the way, we are going to end up solving the dreaded Fast Map Union Problem, combining two of my favorite Haskell tricks, and discovering a bug in a previous version of GHC.
 
