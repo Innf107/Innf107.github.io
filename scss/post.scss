@@ -16,7 +16,7 @@ body {
     font-size: 18px;
 
     @include color(color, black, white, text-color-main);
-    @include color(background-color, white, rgb(43, 43, 43), bg-color-main);
+    @include color(background-color, white, black, bg-color-main);
 
     --link-light: rgb(255, 72, 0);
     --link-dark: rgb(255, 153, 0);
@@ -58,6 +58,11 @@ article, main {
 a {
     @include color(color, var(--link-light), var(--link-dark), color-link);
 
+    text-decoration: none;
+    &:hover {
+        text-decoration: underline;
+    }
+
     &.footnote-ref {
         text-decoration: none;
     }
@@ -67,7 +72,7 @@ a {
 
 
 pre, .sourceCode {
-    @include color(background-color, rgb(230, 230, 230), #393939, bg-color-code);
+    @include color(background-color, rgb(230, 230, 230), #111111, bg-color-code);
     overflow: auto;
     font-family: 'Fira Code', monospace;
 }
@@ -206,9 +211,14 @@ div.sourceCode{
 
     vertical-align: middle;
 
+    a:hover {
+        text-decoration: none;
+    }
+
     > .header {
         font-size: 250%;
         font-weight: bolder;
+
     }
     *:not(.header) {
         font-size: 150%;
@@ -266,7 +276,8 @@ div.sourceCode{
 
     a:hover {
         @include color(color, rgb(160, 0, 0), red, summary-hover);
-            }
+        text-decoration: none;
+    }
 
     .date {
         text-align: right;
@@ -322,17 +333,76 @@ article.about {
     code {
         @include color(color, rgb(255, 80, 80), rgb(255, 80, 80), tooltip-code-color);
     }
-
 }
 
 .tooltip-link {
     text-decoration: none;
+    color: unset;
 
     &:hover {
         @include color(color, rgb(255, 123, 0), rgba(0, 255, 85, 0.74), tooltip-code-hover-color);
+        text-decoration: none;
     }
 }
 
 .tooltip-wrapper:not(:hover) .tooltip {
     display: none;
+}
+
+
+table {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.grid.parent {
+    display: grid;
+    &.c2 {
+        --child-count: 2
+    }
+    &.c3 {
+        --child-count: 3
+    }
+    grid-template-columns: repeat(auto-fit, minmax(calc(100%/var(--child-count)), 1fr));
+}
+.grid:not(.parent) {
+    overflow: hidden;
+}
+
+
+details.haskell-specific {   
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    
+    background-color: rgb(242, 226, 255);
+    color: black;
+
+    summary {
+        &:hover {
+            background-color: rgb(210, 189, 228);
+        }
+        cursor: pointer;
+
+        &::marker {
+            content: "";
+        }
+
+        padding: 0.5rem;
+        img {
+            height: 1.5rem;
+        }
+    }
+
+    .content {
+        margin: 0 0.5rem
+    }
+}
+
+/* Katex does not support \textsc, so we use this hack to interpret \textmd as (effectively) \textsc.
+
+   \textmd *usually* set's the font weight to 'medium'. This is the default, so the only use of this
+   would be resetting the font weight inside something like \textbf. This has never been necessary on 
+   this site so we resuse the CSS class to emulate \textsc instead. */
+.katex .textmd {
+    font-variant: small-caps;
 }

@@ -11,7 +11,7 @@ body {
   body:not(.dark) {
     --text-color-main: black; }
   body.dark {
-    --bg-color-main: #2b2b2b; }
+    --bg-color-main: black; }
   body:not(.dark) {
     --bg-color-main: white; }
 
@@ -39,11 +39,14 @@ article, main {
     article, main {
       width: 90%; } }
 a {
-  color: var(--color-link); }
+  color: var(--color-link);
+  text-decoration: none; }
   body.dark {
     --color-link: var(--link-dark); }
   body:not(.dark) {
     --color-link: var(--link-light); }
+  a:hover {
+    text-decoration: underline; }
   a.footnote-ref {
     text-decoration: none; }
 
@@ -52,7 +55,7 @@ pre, .sourceCode {
   overflow: auto;
   font-family: 'Fira Code', monospace; }
   body.dark {
-    --bg-color-code: #393939; }
+    --bg-color-code: #111111; }
   body:not(.dark) {
     --bg-color-code: #e6e6e6; }
 
@@ -188,6 +191,8 @@ div.sourceCode {
 .navigation {
   text-align: center;
   vertical-align: middle; }
+  .navigation a:hover {
+    text-decoration: none; }
   .navigation > .header {
     font-size: 250%;
     font-weight: bolder; }
@@ -236,7 +241,8 @@ div.sourceCode {
       grid-template-rows: 1fr auto;
       grid-template-columns: 1fr; } }
 .post-summaries a:hover {
-  color: var(--summary-hover); }
+  color: var(--summary-hover);
+  text-decoration: none; }
   body.dark {
     --summary-hover: red; }
   body:not(.dark) {
@@ -302,9 +308,11 @@ article.about {
       --tooltip-code-color: #ff5050; }
 
 .tooltip-link {
-  text-decoration: none; }
+  text-decoration: none;
+  color: unset; }
   .tooltip-link:hover {
-    color: var(--tooltip-code-hover-color); }
+    color: var(--tooltip-code-hover-color);
+    text-decoration: none; }
     body.dark {
       --tooltip-code-hover-color: rgba(0, 255, 85, 0.74); }
     body:not(.dark) {
@@ -312,3 +320,45 @@ article.about {
 
 .tooltip-wrapper:not(:hover) .tooltip {
   display: none; }
+
+table {
+  margin-left: auto;
+  margin-right: auto; }
+
+.grid.parent {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(100%/var(--child-count)), 1fr)); }
+  .grid.parent.c2 {
+    --child-count: 2
+    ; }
+  .grid.parent.c3 {
+    --child-count: 3
+    ; }
+
+.grid:not(.parent) {
+  overflow: hidden; }
+
+details.haskell-specific {
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background-color: #f2e2ff;
+  color: black; }
+  details.haskell-specific summary {
+    cursor: pointer;
+    padding: 0.5rem; }
+    details.haskell-specific summary:hover {
+      background-color: #d2bde4; }
+    details.haskell-specific summary::marker {
+      content: ""; }
+    details.haskell-specific summary img {
+      height: 1.5rem; }
+  details.haskell-specific .content {
+    margin: 0 0.5rem; }
+
+/* Katex does not support \textsc, so we use this hack to interpret \textmd as (effectively) \textsc.
+
+   \textmd *usually* set's the font weight to 'medium'. This is the default, so the only use of this
+   would be resetting the font weight inside something like \textbf. This has never been necessary on 
+   this site so we resuse the CSS class to emulate \textsc instead. */
+.katex .textmd {
+  font-variant: small-caps; }
