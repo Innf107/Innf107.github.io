@@ -1,3 +1,13 @@
+@mixin color-var($name, $light, $dark){
+    @at-root {
+        body.dark {
+            --#{$name}: #{$dark};
+        }
+        body:not(.dark) {
+            --#{$name}: #{$light};  
+        }
+    }
+}
 @mixin color($property, $light, $dark, $name) {
     @at-root {
         body.dark {
@@ -10,13 +20,26 @@
     #{$property}: var(--#{$name});
 }
 
+:root {
+    @include color-var(katex-red, red, red);
+    @include color-var(katex-blue, blue, rgb(46, 172, 255));
+    @include color-var(katex-purple, purple, rgb(255, 0, 255))
+}
+
+html {
+    height: 100%;
+}
+
 body {
     font-family: 'Poppins', sans-serif;
     margin: 0;
     font-size: 18px;
 
+    height: 100%;
+
     @include color(color, black, white, text-color-main);
-    @include color(background-color, white, black, bg-color-main);
+    @include color(background, white, linear-gradient(black, rgb(26, 0, 0)), bg-color-main);
+    background-attachment: fixed;
 
     --link-light: rgb(255, 72, 0);
     --link-dark: rgb(255, 153, 0);
@@ -48,7 +71,7 @@ article, main {
     margin-right: auto;
 
 
-    width:75%;
+    width:70%;
 
     @media screen and (max-width: 768px) {
         width: 90%;
@@ -69,7 +92,9 @@ a {
 }
 
 
-
+blockquote {
+    font-style: italic;
+}
 
 pre, .sourceCode {
     @include color(background-color, rgb(230, 230, 230), #111111, bg-color-code);
@@ -340,7 +365,7 @@ article.about {
     color: unset;
 
     &:hover {
-        @include color(color, rgb(255, 123, 0), rgba(0, 255, 85, 0.74), tooltip-code-hover-color);
+        @include color(color, rgb(255, 123, 0), rgb(255, 123, 0), tooltip-code-hover-color);
         text-decoration: none;
     }
 }
@@ -357,29 +382,35 @@ table {
 
 .grid.parent {
     display: grid;
-    &.c2 {
-        --child-count: 2
-    }
-    &.c3 {
-        --child-count: 3
-    }
-    grid-template-columns: repeat(auto-fit, minmax(calc(100%/var(--child-count)), 1fr));
+
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-auto-rows: 1fr;
+    grid-auto-flow: row;
 }
 .grid:not(.parent) {
     overflow: hidden;
 }
 
+.haskell-logo-light {
+    /* Yes, I am abusing color here to ensure that only one
+       logo is visible at a time. Fight me. */
+    @include color(display, unset, none, light-logo-visibility)
+}
+.haskell-logo-dark {
+    @include color(display, none, unset, dark-logo-visibility)
+}
 
 details.haskell-specific {   
-    border: 1px solid #aaa;
+    border: 1px solid;
     border-radius: 4px;
     
-    background-color: rgb(242, 226, 255);
-    color: black;
+    @include color(border-color, #aaa, rgb(80, 80, 80), haskell-spicific-border);
+
+    @include color(background-color, rgb(242, 226, 255), rgb(80, 56, 100), haskell-specific-bg);
 
     summary {
         &:hover {
-            background-color: rgb(210, 189, 228);
+            @include color(background-color, rgb(210, 189, 228), rgb(129, 95, 156), haskell-specific-bg-hover)
         }
         cursor: pointer;
 

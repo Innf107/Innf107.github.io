@@ -29,7 +29,12 @@ let lookup(key, list) = match List.find(\(k, v) -> k == key, list) {
 }
 
 let doesFileExist(file) = {
-    !bash "-c" ("stat '" ~ file ~ "' > /dev/null 2> /dev/null && echo 'true'") == "true" 
+    try {
+        !bash "-c" ("stat '" ~ file ~ "' > /dev/null 2> /dev/null")
+        true
+    } with {
+        CommandFailure(_) -> false        
+    }
 }
 
 let hasChanged : { source : String, target : String } -> Bool
