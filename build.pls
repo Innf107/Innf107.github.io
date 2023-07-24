@@ -78,13 +78,13 @@ let escapeHTML(content) = {
 
 let collectTooltips : String -> List((String, String))
 let collectTooltips(content) = {
-    let definitionSection = match regexpMatchGroups("<!--#tooltips\s*((?:[^a]|a)+?)\s*-->", content) {
+    let definitionSection = match regexpMatchGroups("<!--#tooltips\\s*((?:[^a]|a)+?)\\s*-->", content) {
         [] -> ""
         [[_, section]] -> section
         sections -> fail("Invalid definition sections (there might be more than one?): " ~ toString(sections))
     }
 
-    let tooltips = regexpMatchGroups("°(.+?)°\s*:\s*([^°]*)", definitionSection)
+    let tooltips = regexpMatchGroups("°(.+?)°\\s*:\\s*([^°]*)", definitionSection)
 
     concatMap(\[_, def, content] -> [(def, content), (escapeHTML(def), content)], tooltips)
 }
