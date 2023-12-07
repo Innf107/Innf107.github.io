@@ -331,7 +331,7 @@ package, so you should be fine.&lt;/p&gt;
 &lt;p&gt;If you want to try this for yourself, you can get the code &lt;a
 href="https://gist.github.com/Innf107/53f1b6e2fdbb1ca0a49d1f75375c036c"&gt;in
 a gist&lt;/a&gt;. Just make sure to use GHC 9.4 or above.&lt;/p&gt;
-&lt;section id="footnotes" class="footnotes footnotes-end-of-document"
+&lt;aside id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes"&gt;
 &lt;hr /&gt;
 &lt;ol&gt;
@@ -355,7 +355,7 @@ the type of types. The only reason this is even valid is that modern GHC
 Haskell has dependent kinds and &lt;code&gt;Type : Type&lt;/code&gt;.&lt;a
 href="#fnref5" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
 &lt;/ol&gt;
-&lt;/section&gt;</description>
+&lt;/aside&gt;</description>
 </item><item>
     <title> Coherent Local Instances with Dynamic Types and ImplicitParams</title>
     <link>https://prophetlabs.de/posts/coherentIP.html</link>
@@ -846,7 +846,7 @@ bug.&lt;/p&gt;
 &lt;p&gt;Still, screwing around with broken features and pushing the limits of
 Haskell is fun. I had a blast writing this and I hope it was enjoyable
 to read as well! Maybe you even learned something today?&lt;/p&gt;
-&lt;section id="footnotes" class="footnotes footnotes-end-of-document"
+&lt;aside id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes"&gt;
 &lt;hr /&gt;
 &lt;ol&gt;
@@ -879,7 +879,7 @@ role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
 &lt;li id="fn5"&gt;&lt;p&gt;Yeah…&lt;a href="#fnref5" class="footnote-back"
 role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
 &lt;/ol&gt;
-&lt;/section&gt;</description>
+&lt;/aside&gt;</description>
 </item><item>
     <title> Faking Local Instances with unsafeCoerce Dict</title>
     <link>https://prophetlabs.de/posts/unsafeCoerceDict.html</link>
@@ -1400,7 +1400,7 @@ href="https://github.com/Innf107/fakedict"&gt;small library on github&lt;/a&gt;,
 including &lt;code&gt;trace&lt;/code&gt;.&lt;/p&gt;
 &lt;p&gt;Ultimately, I hope that you learned a nice little trick today. You
 never know when it might come in handy.&lt;/p&gt;
-&lt;section id="footnotes" class="footnotes footnotes-end-of-document"
+&lt;aside id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes"&gt;
 &lt;hr /&gt;
 &lt;ol&gt;
@@ -1427,7 +1427,7 @@ href="#fnref6" class="footnote-back" role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;
 implement manually&lt;a href="#fnref7" class="footnote-back"
 role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
 &lt;/ol&gt;
-&lt;/section&gt;</description>
+&lt;/aside&gt;</description>
 </item>
     </channel>
 </rss>
