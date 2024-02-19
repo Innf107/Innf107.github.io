@@ -2,7 +2,7 @@
 let title = "Blazingly Fast™ Type Class Resolution with Tries"
 let date = "19 February 2024"
 let pubDate = "2024-02-19"
-let reddit = "Ihaventupdatedthelinkyetsorry"
+let reddit = "https://www.reddit.com/r/ProgrammingLanguages/comments/1auxv8z/blazingly_fast_type_inference_with_tries/"
 }}
 
 One of the more fundamental hurdles when implementing type classes is instance resolution.
