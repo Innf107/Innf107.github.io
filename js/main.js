@@ -9,7 +9,7 @@ function setDarkMode(darkMode){
     iconDark.style  = darkMode ? "display: none" : ""
     iconLight.style = darkMode ? "" : "display: none"
 
-    localStorage.setItem("color-scheme", darkMode ? "dark" : "light")
+    localStorage.setItem("color-scheme", darkMode ? "dark-mode" : "light-mode")
 }
 
 function toggleDarkMode(){
@@ -18,6 +18,6 @@ function toggleDarkMode(){
     setDarkMode(isDarkMode)
 }
 
-isDarkMode = localStorage.getItem("color-scheme") == "dark"
+isDarkMode = localStorage.getItem("color-scheme") != "light-mode"
 setDarkMode(isDarkMode)
 

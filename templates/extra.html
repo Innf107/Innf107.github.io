@@ -27,20 +27,11 @@
 
     {{perform include("static-html/katex.html")}}
     {{perform include("static-html/grid-reflow.html")}}
-
 </head>
 
 <body>
     {{perform include("static-html/header.html")}}
-    <article>
-        <h1>{{title}}</h1>
-        <span class="date">{{date}}</span>
-        {{body}}
-        <hr>
-        If you want to tell me your thoughts about this post, you can leave a comment on <a href="{{reddit}}">Reddit</a>
-        or <a href="/about.html">contact me directly</a>.
-        <script src="/js/main.js"></script>
-    </article>
-</body>
+    {{body}}
+    <script src="/js/main.js"></script>
 
-</html>
+</body>

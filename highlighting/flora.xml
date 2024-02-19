@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE language SYSTEM "language.dtd"
+[
+<!-- Regular expresion constants: -->
+<!ENTITY LOWER  "a-z\300-\326\330-\337"><!-- Lowercase Latin-1 letters. -->
+<!ENTITY UPPER  "A-Z\340-\366\370-\377"><!-- Uppercase Latin-1 letters. -->
+<!ENTITY LETTER "&LOWER;&UPPER;"><!-- All Latin-1 letters. -->
+<!ENTITY LIDENT "[&LOWER;_][&LETTER;0-9_']*"><!-- Lowercase identifiers. -->
+<!ENTITY UIDENT "`?[&UPPER;][&LETTER;0-9_']*"><!-- Uppercase identifiers. -->
+<!ENTITY IDENT  "`?[&LETTER;][&LETTER;0-9_']*"><!-- All identifiers. -->
+<!ENTITY ESC    "(\\[ntbr'&quot;\\]|\\[0-9]{3}|\\x[0-9A-Fa-f]{2})"><!-- Character code escapes. -->
+<!ENTITY DEC    "[0-9]+"><!-- Decimal digits with underscores. -->
+]>
+<language name="Flora" extensions="*.flora" section="Sources" version="1" priority="10" kateversion="5.0" license="MIT">
+
+  <highlighting>
+    <list name="Keywords">
+      <item>if</item>
+      <item>then</item>
+      <item>else</item>
+      <item>let</item>
+      <item>true</item>
+      <item>false</item>
+      <item>not</item>
+      <item>nil</item>
+      <item>handle</item>
+      <item>perform</item>
+      <item>match</item>
+      <item>as</item>
+    </list>
+
+    <contexts>
+
+      <context name="Code" lineEndContext="#stay" attribute="Operator">
+
+        <RegExpr String="--" context="Comment" attribute="Comment" beginRegion="comment" />
+
+        <DetectChar char="&quot;" context="String" attribute="String" />
+
+        <keyword String="Keywords" context="#stay" attribute="Keyword" />
+
+        <RegExpr String="-?&DEC;(\.&DEC;([eE][-+]?&DEC;)?|[eE][-+]?&DEC;)" context="#stay" attribute="Float" />
+        <RegExpr String="-?&DEC;" context="#stay" attribute="Decimal" />
+
+        <!-- Hack, to make repl sessions look pretty :) -->
+        <StringDetect String="λ>" context="#stay" attribute="REPL" />
+      </context>
+
+
+      <context name="String" lineEndContext="#stay" attribute="String">
+        <DetectChar char="&quot;" context="#pop" attribute="String" />
+      </context>
+
+      <context name="Comment" lineEndContext="#pop" attribute="Comment">
+        <DetectSpaces />
+      </context>
+
+      <context name="ProgCall" lineEndContext="#pop" attribute="ProgCall">
+        <DetectSpaces context="#pop" attribute="ProgCall" />
+      </context>
+
+    </contexts>
+
+    <itemDatas>
+      <itemData name="Keyword" defStyleNum="dsKeyword"/>
+
+      <itemData name="Decimal" defStyleNum="dsDecVal" />
+      <itemData name="Float" defStyleNum="dsFloat" />
+
+      <itemData name="String" defStyleNum="dsString" />
+
+      <itemData name="Comment" defStyleNum="dsComment" />
+
+      <itemData name="ProgCall" defStyleNum="dsPreprocessor" />
+
+      <itemData name="REPL" defStyleNum="dsDataType" />
+    </itemDatas>
+  </highlighting>
+
+  <general>
+    <keywords casesensitive="true" />
+    <comments>
+      <comment name="singleLine" start="#" region ="comment" />
+    </comments>
+  </general>
+</language>

@@ -3,20 +3,19 @@
     <head>
         <meta charset="utf-8">
         <title>Prophetlabs</title>
-        <meta name="author" content="Finn Schneider">
         <meta name=viewport content="width=device-width, initial-scale=1.0">
         
-        {{common-head}}
+        {{perform include("static-html/common-head.html")}}
 
         <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
     </head>
     <body>
-        {{header}}
+        {{perform include("static-html/header.html")}}
         <main class="index">
             <h1>Posts</h1>
-            <ul class="post-summaries">
-                {{post-summaries}}
-            </ul>    
+            <div class="post-summaries">
+                {{postSummaries}}
+            </div>    
         
         </main>
         <script src="/js/main.js"></script>

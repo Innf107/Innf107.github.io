@@ -1,40 +1,43 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>About - Prophetlabs</title>
-        <meta name="author" content="Finn Schneider">
-        <meta name=viewport content="width=device-width, initial-scale=1.0">
-        
-        {{common-head}}
-    </head>
-    <body>
-        {{header}}
-        <div class="about-background"></div>
-        <article class="about">
-            <h1>About me</h1>
 
-            <div>
-                Hi!<br>
-                You probably know me as Prophet, welltypedwitch or maybe Innf107... names are complicated.
-                If I ever write something on here again, it's probably going to be about Haskell, programming languages, or type systems.
-                <br>
-                <br>
-                I publish most of my code on <a href="https://github.com/Innf107">github</a>.<br>
-                If you want to reach me, the easiest way is probably at <a href="mailto:mail@prophetlabs.de">mail@prophetlabs.de</a>.<br>
-                <br>
-                You can subscribe to this blog via <a href="rss.xml">RSS</a>.
-                <br>
-            </div>
-            <div class="social-list">
-                <div><a href="https://github.com/Innf107"><i class="fa-brands fa-github fa-4x"></i></a></div>
-                <div><a href="https://reddit.com/u/Innf107"><i class="fa-brands fa-reddit fa-4x"></i></a></div>
-                <div><a href="https://twitter.com/welltypedwitch"><i class="fa-brands fa-twitter fa-4x"></i></a></div>
-                <div><a href="https://types.pl/@prophet"><i class="fa-brands fa-mastodon fa-4x"></i></a></div>
-                <div><a href="https://cohost.org/prophet"><img src="/assets/cohost.svg" style="scale: 0.5"></a></div>
-                <div><a href="/rss.xml"><i class="fa-solid fa-rss fa-4x"></i></a></div>
-            </div>
-        </article>
-        <script src="js/main.js"></script>
-    </body>
+<head>
+    <meta charset="utf-8">
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+
+    {{perform include("static-html/common-head.html")}}
+</head>
+
+<body>
+    {{perform include("static-html/header.html")}}
+    <div class="about-background"></div>
+    <article class="about">
+        <h1>About me</h1>
+
+        <div>
+            Hi!<br>
+            You probably know me as Prophet, welltypedwitch or Innf107... names are complicated.
+            <br>
+            This is where I write about type systems, programming languages and Haskell. If you're interested in those
+            topics,
+            you can subscribe to this blog via <a href="rss.xml">RSS</a>.
+            <br>
+            <br>
+            I publish most of my code on <a href="https://github.com/Innf107">github</a>.<br>
+            If you want to reach me, the easiest way is probably at <a
+                href="mailto:mail@prophetlabs.de">mail@prophetlabs.de</a>.<br>
+            <br>
+        </div>
+        <div class="social-list">
+            <div><a href="https://github.com/Innf107"><i class="fa-brands fa-github fa-4x"></i></a></div>
+            <div><a href="https://reddit.com/u/Innf107"><i class="fa-brands fa-reddit fa-4x"></i></a></div>
+            <div><a href="https://twitter.com/welltypedwitch"><i class="fa-brands fa-twitter fa-4x"></i></a></div>
+            <div><a href="https://types.pl/@prophet"><i class="fa-brands fa-mastodon fa-4x"></i></a></div>
+            <div><a href="https://cohost.org/prophet"><img src="/assets/cohost.svg" style="scale: 0.5"></a></div>
+            <div><a href="/rss.xml"><i class="fa-solid fa-rss fa-4x"></i></a></div>
+        </div>
+    </article>
+    <script src="js/main.js"></script>
+</body>
+
 </html>

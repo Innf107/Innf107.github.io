@@ -6,6 +6,6 @@
         <pubDate>{{pubDate}}</pubDate>
         <lastBuildDate>{{lastBuildDate}}</lastBuildDate>
         <ttl>60</ttl>
-        {{rss-items}}
+        {{rssItems}}
     </channel>
 </rss>

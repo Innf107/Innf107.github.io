@@ -1,22 +1,27 @@
-@mixin color-var($name, $light, $dark){
+@mixin color-var($name, $light, $dark) {
     @at-root {
         body.dark {
             --#{$name}: #{$dark};
         }
+
         body:not(.dark) {
-            --#{$name}: #{$light};  
+            --#{$name}: #{$light};
         }
     }
 }
+
 @mixin color($property, $light, $dark, $name) {
     @at-root {
         body.dark {
             --#{$name}: #{$dark};
         }
+
         body:not(.dark) {
-            --#{$name}: #{$light};  
+            --#{$name}: #{$light};
         }
-    };
+    }
+
+    ;
     #{$property}: var(--#{$name});
 }
 
@@ -24,6 +29,10 @@
     @include color-var(katex-red, red, red);
     @include color-var(katex-blue, blue, rgb(46, 172, 255));
     @include color-var(katex-purple, purple, rgb(255, 0, 255))
+}
+
+* {
+    box-sizing: border-box;
 }
 
 html {
@@ -43,17 +52,21 @@ body {
 
     --link-light: rgb(255, 72, 0);
     --link-dark: rgb(255, 153, 0);
+
+    @include color(_ignore, #afafaf, #4d4d4d, gray);
 }
 
 h1 {
     font-size: 66px;
     font-weight: 700;
+
     @media screen and (max-width: 768px) {
         font-size: 35px;
     }
 }
 
-h1, h2 {
+h1,
+h2 {
     text-transform: uppercase;
     margin-bottom: 0;
 }
@@ -62,11 +75,13 @@ h1, h2 {
     font-size: 150%;
 }
 
-article, main {
-    > h1 {
+article,
+main {
+    >h1 {
         margin-top: 1rem;
         overflow: auto;
     }
+
     margin-left: auto;
     margin-right: auto;
 
@@ -82,6 +97,7 @@ a {
     @include color(color, var(--link-light), var(--link-dark), color-link);
 
     text-decoration: none;
+
     &:hover {
         text-decoration: underline;
     }
@@ -96,25 +112,49 @@ blockquote {
     font-style: italic;
 }
 
-pre, .sourceCode {
+pre,
+.sourceCode {
     @include color(background-color, rgb(230, 230, 230), #111111, bg-color-code);
-    overflow: auto;
     font-family: 'Fira Code', monospace;
 }
 
-code:not(.sourceCode){
+
+
+code:not(.sourceCode) {
     @include color(color, rgb(160, 0, 0), rgb(230, 0, 0), inline-code-color);
     font-family: 'Fira Code', monospace;
 }
 
-div.sourceCode{
+div.sourceCode {
     padding-left: 1rem;
     padding-right: 1rem;
 
+    overflow: auto;
 }
 
-.sourceCode {
+pre.sourceCode.diff:not(:hover) {
+    /* TODO: light mode */
+    color: #bfbfbf;
+
     .ot, .op, .kw {
+        color: #353535;
+    }
+
+    /* TODO: .co (?) */
+    .dt {
+        color: #6f6f6f;
+    }
+
+    /* TODO: .dv, .st, &.polaris .dt*/
+}
+
+pre.sourceCode, .diff-area {
+    /*TODO: light mode*/
+    color: var(--text-color-main);
+
+    .ot,
+    .op,
+    .kw {
         @include color(color, rgb(122, 0, 0), rgb(255, 0, 0), haskell-kw);
     }
 
@@ -139,20 +179,49 @@ div.sourceCode{
             @include color(color, #ff0000, #ff0000, polaris-repl)
         }
     }
-    
+}
+.diff-area {
+    .ot,
+    .op,
+    .kw {
+        color: var(--haskell-kw) !important;
+    }
+
+    .co {
+        color: var(--haskell-co) !important;
+    }
+
+    .dt {
+        color: var(--haskell-dt) !important;
+    }
+
+    .dv {
+        color: var(--haskell-dv) !important;
+    }
+
+    .st {
+        color: var(--haskell-st) !important;
+    }
+
+    &.polaris {
+        .dt {
+            color: var(--polaris-repl) !important;
+        }
+    }
 }
 
 
 .multicode {
     display: grid;
     grid-template-columns: 1fr 1fr;
+
     @media screen and (max-width: 768px) {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr 1fr;
         gap: 5px;
     }
-    
-        
+
+
 }
 
 /* The parent of the .lang span*/
@@ -166,7 +235,7 @@ div.sourceCode{
     button {
         background: none;
         border: none;
-        
+
         &:active {
             color: white;
         }
@@ -198,6 +267,7 @@ div.sourceCode{
 .navbar {
     display: grid;
     grid-template-columns: 1fr 2fr 0.5fr;
+
     @media screen and (max-width: 768px) {
         font-size: 80%;
 
@@ -207,15 +277,17 @@ div.sourceCode{
             display: none;
         }
 
-        > * {
+        >* {
             margin: 0;
             border-bottom: rgb(46, 46, 46) solid 2px;
         }
     }
+
     @include color(background-color, #000000, #000000, navbar-bg);
-    
-    > * {
+
+    >* {
         padding: 1rem;
+
         @media screen and (max-width: 768px) {
             padding: 0.5rem;
         }
@@ -226,7 +298,8 @@ div.sourceCode{
         font-weight: bold;
         text-decoration: none;
     }
-    ul > * {
+
+    ul>* {
         display: inline-block;
     }
 }
@@ -240,11 +313,12 @@ div.sourceCode{
         text-decoration: none;
     }
 
-    > .header {
+    >.header {
         font-size: 250%;
         font-weight: bolder;
 
     }
+
     *:not(.header) {
         font-size: 150%;
     }
@@ -267,36 +341,33 @@ div.sourceCode{
 /* /navbar */
 
 /*index*/
-.index > h1 {
+.index>h1 {
     text-align: center;
 }
 
 .post-summaries {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+
+    @media screen and (max-width: 768px) {
+        grid-template-rows: repeat(1fr 0.2fr);
+        grid-template-columns: 1fr;
+    }
+
     * {
         font-size: 28px;
+
         @media screen and (max-width: 768px) {
             font-size: 22px;
         }
 
         text-transform: uppercase;
         text-decoration: none;
-        
+
         font-weight: bold;
 
         @include color(color, black, white, summary-fg)
-    }
-    > li {
-        list-style: none;
-        padding-bottom: 2rem;
-        overflow: hidden;
-        display: grid;
-
-        grid-template-columns: 1fr auto;
-
-        @media screen and (max-width: 768px) {
-            grid-template-rows: 1fr auto;
-            grid-template-columns: 1fr;
-        }
     }
 
     a:hover {
@@ -308,14 +379,16 @@ div.sourceCode{
         text-align: right;
     }
 }
+
 /* /index */
 
 /* about */
 .about {
     h1 {
-        text-align: center;        
+        text-align: center;
     }
 }
+
 article.about {
     width: 50%;
     @include color(background-color, white, black, about-article-color);
@@ -327,8 +400,10 @@ article.about {
     margin-top: 2rem;
     grid-template-columns: repeat(6, 1fr);
     text-align: center;
+
     a {
         @include color(color, black, white, social-color);
+
         &:hover {
             @include color(color, var(--link-light), var(--link-dark), social-color-hover)
         }
@@ -345,6 +420,7 @@ article.about {
     left: 0;
     z-index: -100;
 }
+
 /* /about */
 
 
@@ -354,6 +430,7 @@ article.about {
     color: white;
     padding: 1rem 1rem;
     border-radius: 15px;
+    z-index: 100;
 
     code {
         @include color(color, rgb(255, 80, 80), rgb(255, 80, 80), tooltip-code-color);
@@ -374,6 +451,22 @@ article.about {
     display: none;
 }
 
+.dot-output {
+    svg {
+        width: 100%;
+
+        display: block;
+        margin-left: auto;
+        margin-right: auto;    
+
+        @include color(stroke, black, white, dot-svg-stroke);
+        @include color(fill, black, white, dot-svg-fill-color);
+
+        text {
+            stroke: none;
+        }
+    }
+}
 
 table {
     margin-left: auto;
@@ -383,10 +476,16 @@ table {
 .grid.parent {
     display: grid;
 
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    grid-auto-rows: 1fr;
-    grid-auto-flow: row;
+    &.column1 {
+        grid-template-columns: 1fr;
+    }
+
+    &:not(.column1) {
+        grid-template-columns: 1fr 1fr;
+    }
+
 }
+
 .grid:not(.parent) {
     overflow: hidden;
 }
@@ -396,14 +495,15 @@ table {
        logo is visible at a time. Fight me. */
     @include color(display, unset, none, light-logo-visibility)
 }
+
 .haskell-logo-dark {
     @include color(display, none, unset, dark-logo-visibility)
 }
 
-details.haskell-specific {   
+details.haskell-specific {
     border: 1px solid;
     border-radius: 4px;
-    
+
     @include color(border-color, #aaa, rgb(80, 80, 80), haskell-spicific-border);
 
     @include color(background-color, rgb(242, 226, 255), rgb(80, 56, 100), haskell-specific-bg);
@@ -412,6 +512,7 @@ details.haskell-specific {
         &:hover {
             @include color(background-color, rgb(210, 189, 228), rgb(129, 95, 156), haskell-specific-bg-hover)
         }
+
         cursor: pointer;
 
         &::marker {
@@ -419,6 +520,7 @@ details.haskell-specific {
         }
 
         padding: 0.5rem;
+
         img {
             height: 1.5rem;
         }
@@ -436,4 +538,15 @@ details.haskell-specific {
    this site so we resuse the CSS class to emulate \textsc instead. */
 .katex .textmd {
     font-variant: small-caps;
+}
+
+.code-explanation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    padding-left: 2rem;
+
+    p {
+        border: 1px black;
+    }
 }

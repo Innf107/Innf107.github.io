@@ -1,7 +1,9 @@
-<!--title: Faking Local Instances with <code>unsafeCoerce Dict</code>-->
-<!--date: 18 March 2022-->
-<!--pubDate:2022-3-18-->
-<!--reddit:https://www.reddit.com/r/haskell/comments/thaqi6/faking_local_instances_with_unsafecoerce_dict/-->
+{{
+let title = "Faking Local Instances with <code>unsafeCoerce Dict</code>"
+let date = "18 March 2022"
+let pubDate = "2022-3-18"
+let reddit = "https://www.reddit.com/r/haskell/comments/thaqi6/faking_local_instances_with_unsafecoerce_dict/"
+}}
 When you first learned about Haskell's `Monoid` typeclass, you were probably quite surprised to find out that there is no instance for `Monoid Int` in `base`.
 
 After all, `(+)` is an associative binary operation, and `0` acts as a unit element.

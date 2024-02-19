@@ -1,7 +1,9 @@
-<!--title: Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code>-->
-<!--date: 29 August 2022-->
-<!--pubDate:2022-8-29-->
-<!--reddit:https://www.reddit.com/r/haskell/comments/x1jz4w/coherent_local_instances_with_dynamic_types_and/-->
+{{
+let title = "Coherent Local Instances with Dynamic Types and <code>ImplicitParams</code>"
+let date = "29 August 2022"
+let pubDate = "2022-8-29"
+let reddit = "https://www.reddit.com/r/haskell/comments/x1jz4w/coherent_local_instances_with_dynamic_types_and/"
+}}
 If you read my [previous post](/posts/unsafeCoerceDict.html)[^1] about local instances, you might have noticed something.
 Remember how I said that `ImplicitParams` are really just [syntactic sugar for instances of the type class `GHC.Classes.IP`](/posts/unsafeCoerceDict.html#implicitparams)? Well, unlike `withFakeDict`, `ImplicitParams` can safely be overridden, without causing incoherence issues.
 Couldn't we somehow use `ImplicitParams` to provide local type class instances that can safely be overridden?
