@@ -378,5 +378,5 @@ let _ = async buildPage("about.html", "about.html", newFloraEnv())
 let environments = List.reverse(await posts)
 
 let _ = async buildIndex(environments)
-let _ = async buildRSS(environments, "19-02-2023")
+let _ = async buildRSS(environments, "19-02-2024")
 
