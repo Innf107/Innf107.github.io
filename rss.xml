@@ -3,10 +3,177 @@
         <title>Prophetlabs</title>
         <description>My Blog</description>
         <link>https://prophetlabs.de</link>
-        <pubDate>19-02-2024</pubDate>
-        <lastBuildDate>19-02-2024</lastBuildDate>
+        <pubDate>07-10-2024</pubDate>
+        <lastBuildDate>07-10-2024</lastBuildDate>
         <ttl>60</ttl>
         <item>
+    <title>Newtypes Are Better Than Abstract Type Synonyms</title>
+    <link>https://prophetlabs.de/posts/newtypes.html</link>
+    <guid isPremaLink="true">https://prophetlabs.de/posts/newtypes.html</guid>
+    <pubDate>2024-10-07</pubDate>
+    <description>&lt;p&gt;One of OCaml’s flagship features is what they call “abstract types”.
+In essence, this lets programmers declare a type, even as a type synonym
+inside a module and, by hiding its definition in the signature, make it
+appear abstract to the outside world.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre
+class="sourceCode ocaml"&gt;&lt;code class="sourceCode ocaml"&gt;&lt;span id="cb1-1"&gt;&lt;a href="#cb1-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;module&lt;/span&gt; Unix : &lt;span class="kw"&gt;sig&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-2"&gt;&lt;a href="#cb1-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;type&lt;/span&gt; file_descr &lt;span class="co"&gt;(* abstract *)&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-3"&gt;&lt;a href="#cb1-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;val&lt;/span&gt; open_file : &lt;span class="dt"&gt;string&lt;/span&gt; -&gt; file_descr&lt;/span&gt;
+&lt;span id="cb1-4"&gt;&lt;a href="#cb1-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;val&lt;/span&gt; read_file : file_descr -&gt; &lt;span class="dt"&gt;string&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-5"&gt;&lt;a href="#cb1-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;end&lt;/span&gt; = &lt;span class="kw"&gt;struct&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-6"&gt;&lt;a href="#cb1-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;type&lt;/span&gt; file_descr = &lt;span class="dt"&gt;int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb1-7"&gt;&lt;a href="#cb1-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;/span&gt;
+&lt;span id="cb1-8"&gt;&lt;a href="#cb1-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; open_file file = some_internal_c_code_that_returns_an_int file&lt;/span&gt;
+&lt;span id="cb1-9"&gt;&lt;a href="#cb1-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;/span&gt;
+&lt;span id="cb1-10"&gt;&lt;a href="#cb1-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; read_file file_descr = some_internal_c_code_that_takes_an_int file_descr&lt;/span&gt;
+&lt;span id="cb1-11"&gt;&lt;a href="#cb1-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;end&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;From the perspective of writing modules like this, this feature is
+great! It means that the code inside the module can treat the type
+exactly as its underlying type and make whatever assumptions it needs to
+make without any additional ceremony because, inside the module, they
+&lt;em&gt;are&lt;/em&gt; exactly equal!&lt;br /&gt;
+But from the outside, you get a fully abstract type that users can make
+no assumptions about other than what you expose to them via the module
+signature.&lt;/p&gt;
+&lt;h2 id="newtypes"&gt;Newtypes&lt;/h2&gt;
+&lt;p&gt;Since Haskell’s module system is significantly less powerful than
+OCaml’s, it cannot implement abstract types in the same way. Instead,
+abstract types are implemented as data types or newtypes that don’t
+export their constructor.&lt;/p&gt;
+&lt;p&gt;While this achieves roughly the same effect, it means that any code
+inside the module that uses the underlying type needs to wrap and unwrap
+the newtype constructors &lt;em&gt;everywhere&lt;/em&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb2-1"&gt;&lt;a href="#cb2-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;module&lt;/span&gt; &lt;span class="dt"&gt;Unix&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-2"&gt;&lt;a href="#cb2-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;  ( &lt;span class="dt"&gt;FileDescr&lt;/span&gt; &lt;span class="co"&gt;-- does not export its constructor (MkFileDescr)&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-3"&gt;&lt;a href="#cb2-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;  , openFile&lt;/span&gt;
+&lt;span id="cb2-4"&gt;&lt;a href="#cb2-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;  , &lt;span class="fu"&gt;readFile&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-5"&gt;&lt;a href="#cb2-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;  )&lt;/span&gt;
+&lt;span id="cb2-6"&gt;&lt;a href="#cb2-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-7"&gt;&lt;a href="#cb2-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;newtype&lt;/span&gt; &lt;span class="dt"&gt;FileDescr&lt;/span&gt; &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkFileDescr&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-8"&gt;&lt;a href="#cb2-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-9"&gt;&lt;a href="#cb2-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;openFile ::&lt;/span&gt; &lt;span class="dt"&gt;FilePath&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; &lt;span class="dt"&gt;FileDescr&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-10"&gt;&lt;a href="#cb2-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;openFile path &lt;span class="ot"&gt;=&lt;/span&gt; &lt;span class="dt"&gt;MkFileDescr&lt;/span&gt; (someInternalCCodeThatReturnsAnInt path)&lt;/span&gt;
+&lt;span id="cb2-11"&gt;&lt;a href="#cb2-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb2-12"&gt;&lt;a href="#cb2-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="fu"&gt;readFile&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;FileDescr&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;IO&lt;/span&gt; &lt;span class="dt"&gt;String&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb2-13"&gt;&lt;a href="#cb2-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;readFIle (&lt;span class="dt"&gt;MkFileDescr&lt;/span&gt; fileDescr) &lt;span class="ot"&gt;=&lt;/span&gt; someInternalCCodeThatTakesAnInt fileDescr&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;With a small example like this, the amount of wrapping/unwrapping
+might not seem all that important, but in real code, these can add up
+and get quite annoying! Implementing modules with abstract type synonyms
+is much more convenient.&lt;/p&gt;
+&lt;h2 id="wait-thats-not-what-you-said-in-the-title"&gt;Wait that’s not what
+you said in the title!&lt;/h2&gt;
+&lt;p&gt;While I honestly believe that &lt;em&gt;inside&lt;/em&gt; a module, abstract type
+synonyms are much more convenient than abstract types implemented
+through newtypes, they have one fatal flaw that already appears in OCaml
+and would be significantly exacerbated in a language with type
+classes:&lt;/p&gt;
+&lt;p&gt;Abstract type synonyms &lt;strong&gt;hide too much
+information&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;In particular, they hide the information that an abstract type is
+&lt;strong&gt;not&lt;/strong&gt; equal to another type.&lt;/p&gt;
+&lt;p&gt;To demonstrate this, let’s look at a (slightly contrived) example
+involving GADTs in both OCaml and Haskell.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb3"&gt;&lt;pre
+class="sourceCode ocaml"&gt;&lt;code class="sourceCode ocaml"&gt;&lt;span id="cb3-1"&gt;&lt;a href="#cb3-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;type&lt;/span&gt; _ some_gadt =&lt;/span&gt;
+&lt;span id="cb3-2"&gt;&lt;a href="#cb3-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;   | AnInt : &lt;span class="dt"&gt;int&lt;/span&gt; -&gt; &lt;span class="dt"&gt;int&lt;/span&gt; some_gadt&lt;/span&gt;
+&lt;span id="cb3-3"&gt;&lt;a href="#cb3-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;   | SomethingElse : &#39;a -&gt; &#39;a some_gadt&lt;/span&gt;
+&lt;span id="cb3-4"&gt;&lt;a href="#cb3-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb3-5"&gt;&lt;a href="#cb3-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;let&lt;/span&gt; some_pattern_match : file_descr some_gadt -&gt; file_descr =&lt;/span&gt;
+&lt;span id="cb3-6"&gt;&lt;a href="#cb3-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;function&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb3-7"&gt;&lt;a href="#cb3-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    | SomethingElse descr -&gt; descr&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;span&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;div class="sourceCode" id="cb4"&gt;&lt;pre class="sourceCode hs"&gt;&lt;code class="sourceCode haskell"&gt;&lt;span id="cb4-1"&gt;&lt;a href="#cb4-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;data&lt;/span&gt; &lt;span class="dt"&gt;SomeGADT&lt;/span&gt; a &lt;span class="kw"&gt;where&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb4-2"&gt;&lt;a href="#cb4-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;AnInt&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;SomeGADT&lt;/span&gt; &lt;span class="dt"&gt;Int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb4-3"&gt;&lt;a href="#cb4-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="dt"&gt;SomethingElse&lt;/span&gt;&lt;span class="ot"&gt; ::&lt;/span&gt; a &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;SomeGADT&lt;/span&gt; a&lt;/span&gt;
+&lt;span id="cb4-4"&gt;&lt;a href="#cb4-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb4-5"&gt;&lt;a href="#cb4-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="ot"&gt;somePatternMatch ::&lt;/span&gt; &lt;span class="dt"&gt;SomeGADT&lt;/span&gt; &lt;span class="dt"&gt;FileDescr&lt;/span&gt; &lt;span class="ot"&gt;-&gt;&lt;/span&gt; &lt;span class="dt"&gt;FileDescr&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb4-6"&gt;&lt;a href="#cb4-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;somePatternMatch (&lt;span class="dt"&gt;SomethingElse&lt;/span&gt; descr) &lt;span class="ot"&gt;=&lt;/span&gt; descr&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Seems pretty harmless so far, doesn’t it?&lt;/p&gt;
+&lt;p&gt;Well, if you tried to run this, you would see that only the OCaml
+version would complain that you haven’t provided a case for
+&lt;code&gt;AnInt&lt;/code&gt;!&lt;/p&gt;
+&lt;p&gt;And if you think about it, that seems wrong! &lt;code&gt;AnInt _&lt;/code&gt; has
+type &lt;code&gt;int some_gadt&lt;/code&gt; and you have a
+&lt;code&gt;file_descr some_gadt&lt;/code&gt; here so it couldn’t possibly be
+&lt;code&gt;AnInt _&lt;/code&gt;, could it?&lt;/p&gt;
+&lt;h2 id="yes-it-could"&gt;Yes, it could!&lt;/h2&gt;
+&lt;p&gt;Inside the &lt;code&gt;Unix&lt;/code&gt; module, &lt;code&gt;file_descr&lt;/code&gt;
+&lt;em&gt;is&lt;/em&gt; equal to &lt;code&gt;int&lt;/code&gt;, so
+&lt;code&gt;file_descr some_gadt&lt;/code&gt; is also equal to
+&lt;code&gt;int some_gadt&lt;/code&gt;!&lt;/p&gt;
+&lt;p&gt;The compiler needs to assume that you could have created an
+&lt;code&gt;AnInt _&lt;/code&gt; inside that module and exposed it as a
+&lt;code&gt;file_descr some_gadt&lt;/code&gt; that you’re now passing to
+&lt;code&gt;some_pattern_match&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Even worse, because the compiler cannot leak the fact that
+&lt;code&gt;file_descr&lt;/code&gt; is an &lt;code&gt;int&lt;/code&gt; internally (which would
+defeat the whole point of abstract types), it cannot make any
+assumptions about &lt;em&gt;any&lt;/em&gt; other types! It also cannot assume that a
+&lt;code&gt;file_descr some_gadt&lt;/code&gt; is not a &lt;code&gt;string some_gadt&lt;/code&gt;
+or a &lt;code&gt;float some_gadt&lt;/code&gt;, etc.&lt;/p&gt;
+&lt;p&gt;So as long as you have abstract type synonyms in the language, the
+compiler can never eliminate any pattern matches involving abstract
+types.&lt;/p&gt;
+&lt;p&gt;Newtypes avoid this issue because &lt;code&gt;FileDescr&lt;/code&gt; and
+&lt;code&gt;Int&lt;/code&gt; are &lt;em&gt;always&lt;/em&gt; separate types. It’s just that they
+can be converted seamlessly without runtime costs. &lt;a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;h2 id="what-was-that-about-type-classes"&gt;What was that about type
+classes?&lt;/h2&gt;
+&lt;p&gt;In a language with globally coherent type classes, type class
+instances cannot be implemented on abstract type synonyms.&lt;/p&gt;
+&lt;p&gt;Global coherence means that every type class instance for a type is
+equal, so it doesn’t matter where you get your &lt;code&gt;Eq Int&lt;/code&gt;
+instance from.&lt;/p&gt;
+&lt;p&gt;This is important for types like Haskell’s &lt;a
+href="https://www.stackage.org/haddock/lts-22.37/containers-0.6.7/Data-Map.html"&gt;Map&lt;/a&gt;,
+a binary search tree whose structure depends on the &lt;code&gt;Ord&lt;/code&gt;
+instance of its keys.&lt;/p&gt;
+&lt;p&gt;If you could create a &lt;code&gt;Map&lt;/code&gt; with one instance of, say,
+&lt;code&gt;Ord Int&lt;/code&gt; and then later access it with a different one, you
+could violate the internal invariants of the &lt;code&gt;Map&lt;/code&gt; data
+structure.&lt;/p&gt;
+&lt;p&gt;And if you could implement type class instances on abstract type
+synonyms, you could do exactly that!&lt;/p&gt;
+&lt;div class="sourceCode" id="cb5"&gt;&lt;pre
+class="sourceCode ocaml"&gt;&lt;code class="sourceCode ocaml"&gt;&lt;span id="cb5-1"&gt;&lt;a href="#cb5-1" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;instance Ord &lt;span class="dt"&gt;int&lt;/span&gt; = ...&lt;/span&gt;
+&lt;span id="cb5-2"&gt;&lt;a href="#cb5-2" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb5-3"&gt;&lt;a href="#cb5-3" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;module&lt;/span&gt; Unix : &lt;span class="kw"&gt;sig&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-4"&gt;&lt;a href="#cb5-4" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;type&lt;/span&gt; file_descr&lt;/span&gt;
+&lt;span id="cb5-5"&gt;&lt;a href="#cb5-5" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;val&lt;/span&gt; some_map : (file_descr, &lt;span class="dt"&gt;string&lt;/span&gt;) map&lt;/span&gt;
+&lt;span id="cb5-6"&gt;&lt;a href="#cb5-6" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;val&lt;/span&gt; some_descriptor : file_descr&lt;/span&gt;
+&lt;span id="cb5-7"&gt;&lt;a href="#cb5-7" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;end&lt;/span&gt; = &lt;span class="kw"&gt;struct&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-8"&gt;&lt;a href="#cb5-8" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;type&lt;/span&gt; t = &lt;span class="dt"&gt;int&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-9"&gt;&lt;a href="#cb5-9" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; some_map = &lt;span class="dt"&gt;Map&lt;/span&gt;.from_list [(&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="st"&gt;&quot;a&quot;&lt;/span&gt;), (&lt;span class="dv"&gt;2&lt;/span&gt;, &lt;span class="st"&gt;&quot;b&quot;&lt;/span&gt;), (&lt;span class="dv"&gt;3&lt;/span&gt;, &lt;span class="st"&gt;&quot;c&quot;&lt;/span&gt;)]&lt;/span&gt;
+&lt;span id="cb5-10"&gt;&lt;a href="#cb5-10" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;    &lt;span class="kw"&gt;let&lt;/span&gt; some_descriptor = &lt;span class="dv"&gt;2&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-11"&gt;&lt;a href="#cb5-11" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="kw"&gt;end&lt;/span&gt;&lt;/span&gt;
+&lt;span id="cb5-12"&gt;&lt;a href="#cb5-12" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb5-13"&gt;&lt;a href="#cb5-13" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;instance Ord file_descr = ...&lt;/span&gt;
+&lt;span id="cb5-14"&gt;&lt;a href="#cb5-14" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id="cb5-15"&gt;&lt;a href="#cb5-15" aria-hidden="true" tabindex="-1"&gt;&lt;/a&gt;&lt;span class="dt"&gt;Map&lt;/span&gt;.lookup Unix.some_map Unix.some_descriptor&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;code&gt;Map.from_list&lt;/code&gt; call uses the &lt;code&gt;Ord int&lt;/code&gt;
+instance defined above, but the &lt;code&gt;Map.lookup&lt;/code&gt; call uses the
+second &lt;code&gt;Ord file_descr&lt;/code&gt; instance which might be
+different!&lt;/p&gt;
+&lt;p&gt;Therefore, in a language like this, it would be impossible to
+implement any type class instances for any abstract type, including file
+descriptors, stacks, and many more.&lt;/p&gt;
+&lt;p&gt;And that’s why newtypes are better than abstract type synonyms!&lt;/p&gt;
+&lt;aside id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes"&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id="fn1"&gt;&lt;p&gt;One caveat you might be thinking of is that &lt;a
+href="https://www.stackage.org/haddock/lts-22.37/base-4.18.2.1/Data-Coerce.html#t:Coercible"&gt;Coercible&lt;/a&gt;
+lets you convert a &lt;code&gt;[Int]&lt;/code&gt; to a &lt;code&gt;[FileDescr]&lt;/code&gt;.
+However, for exactly the reasons discussed here, GADTs like this always
+have &lt;code&gt;type role nominal&lt;/code&gt; so Coercible will not allow you to
+convert a &lt;code&gt;SomeGADT Int&lt;/code&gt; to a
+&lt;code&gt;SomeGADT FileDescr&lt;/code&gt;.&lt;a href="#fnref1" class="footnote-back"
+role="doc-backlink"&gt;↩︎&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/aside&gt;</description>
+</item><item>
     <title>Blazingly Fast™ Type Class Resolution with Tries</title>
     <link>https://prophetlabs.de/posts/classTries.html</link>
     <guid isPremaLink="true">https://prophetlabs.de/posts/classTries.html</guid>
@@ -51,7 +218,7 @@ words and pick out all the ones that contain the prefix
 visualize this flat set of all valid words as a flat tree.&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="886pt" height="116pt" viewBox="0.00 0.00 885.53 116.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -192,7 +359,7 @@ don’t start with a &lt;code&gt;c&lt;/code&gt;.&lt;/p&gt;
 characters to sets of words, looks like this.&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="883pt" height="188pt" viewBox="0.00 0.00 883.17 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -369,7 +536,7 @@ effectively unrolling the words into fancy interlinked lists of
 characters, we end up with a &lt;strong&gt;trie&lt;/strong&gt;!&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="566pt" height="620pt" viewBox="0.00 0.00 566.00 620.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -761,7 +928,7 @@ unrolled into
 above.&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="341pt" height="260pt" viewBox="0.00 0.00 340.64 260.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -770,44 +937,44 @@ above.&lt;/p&gt;
 &lt;title&gt;
 C
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="124.32" cy="-234" rx="30.69" ry="18"/&gt;
-&lt;text text-anchor="middle" x="124.32" y="-229.32" font-family="Times,serif" font-size="14.00"&gt;C(_)&lt;/text&gt;
+&lt;ellipse fill="none"  cx="123.32" cy="-234" rx="30.69" ry="18"/&gt;
+&lt;text text-anchor="middle" x="123.32" y="-229.32" font-family="Times,serif" font-size="14.00"&gt;C(_)&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="node2" class="node"&gt;
 &lt;title&gt;
 Int
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="37.32" cy="-162" rx="27" ry="18"/&gt;
-&lt;text text-anchor="middle" x="37.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;Int&lt;/text&gt;
+&lt;ellipse fill="none"  cx="36.32" cy="-162" rx="27" ry="18"/&gt;
+&lt;text text-anchor="middle" x="36.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;Int&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="edge1" class="edge"&gt;
 &lt;title&gt;
 C-&gt;Int
 &lt;/title&gt;
-&lt;path fill="none"  d="M106.71,-218.83C94.09,-208.68 76.89,-194.83 62.77,-183.47"/&gt;
-&lt;polygon   points="65.18,-180.92 55.19,-177.38 60.79,-186.38 65.18,-180.92"/&gt;
+&lt;path fill="none"  d="M105.71,-218.83C93.09,-208.68 75.89,-194.83 61.77,-183.47"/&gt;
+&lt;polygon   points="64.18,-180.92 54.19,-177.38 59.79,-186.38 64.18,-180.92"/&gt;
 &lt;/g&gt;  &lt;g id="node3" class="node"&gt;
 &lt;title&gt;
 List(_)
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="124.32" cy="-162" rx="42.26" ry="18"/&gt;
-&lt;text text-anchor="middle" x="124.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;List(_)&lt;/text&gt;
+&lt;ellipse fill="none"  cx="123.32" cy="-162" rx="42.26" ry="18"/&gt;
+&lt;text text-anchor="middle" x="123.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;List(_)&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="edge2" class="edge"&gt;
 &lt;title&gt;
 C-&gt;List(_)
 &lt;/title&gt;
-&lt;path fill="none"  d="M124.32,-215.7C124.32,-208.41 124.32,-199.73 124.32,-191.54"/&gt;
-&lt;polygon   points="127.82,-191.62 124.32,-181.62 120.82,-191.62 127.82,-191.62"/&gt;
+&lt;path fill="none"  d="M123.32,-215.7C123.32,-208.41 123.32,-199.73 123.32,-191.54"/&gt;
+&lt;polygon   points="126.82,-191.62 123.32,-181.62 119.82,-191.62 126.82,-191.62"/&gt;
 &lt;/g&gt;  &lt;g id="node6" class="node"&gt;
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="225.32" cy="-162" rx="40.69" ry="18"/&gt;
-&lt;text text-anchor="middle" x="225.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;(_,
+&lt;ellipse fill="none"  cx="224.32" cy="-162" rx="40.69" ry="18"/&gt;
+&lt;text text-anchor="middle" x="224.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;(_,
 _)&lt;/text&gt; &lt;/g&gt;  &lt;g id="edge5" class="edge"&gt;
 &lt;title&gt;
 C-&gt;(\&lt;em&gt;, \&lt;/em&gt;)
 &lt;/title&gt;
-&lt;path fill="none"  d="M143.32,-219.83C157.74,-209.84 177.88,-195.88 194.59,-184.3"/&gt;
-&lt;polygon   points="196.49,-187.24 202.72,-178.67 192.5,-181.49 196.49,-187.24"/&gt;
+&lt;path fill="none"  d="M142.32,-219.83C156.74,-209.84 176.88,-195.88 193.59,-184.3"/&gt;
+&lt;polygon   points="195.49,-187.24 201.72,-178.67 191.5,-181.49 195.49,-187.24"/&gt;
 &lt;/g&gt;  &lt;g id="node4" class="node"&gt;
 &lt;title&gt;
 Bool
@@ -818,8 +985,8 @@ Bool
 &lt;title&gt;
 List(_)-&gt;Bool
 &lt;/title&gt;
-&lt;path fill="none"  d="M104.57,-145.81C91.71,-135.92 74.75,-122.87 60.61,-111.99"/&gt;
-&lt;polygon   points="63.05,-109.45 52.99,-106.13 58.78,-115 63.05,-109.45"/&gt;
+&lt;path fill="none"  d="M103.79,-145.81C91.15,-135.98 74.52,-123.04 60.59,-112.21"/&gt;
+&lt;polygon   points="63.13,-109.75 53.08,-106.37 58.83,-115.27 63.13,-109.75"/&gt;
 &lt;/g&gt;  &lt;g id="node5" class="node"&gt;
 &lt;title&gt;
 String
@@ -830,8 +997,8 @@ String
 &lt;title&gt;
 List(_)-&gt;String
 &lt;/title&gt;
-&lt;path fill="none"  d="M125.06,-143.7C125.37,-136.41 125.75,-127.73 126.1,-119.54"/&gt;
-&lt;polygon   points="129.59,-119.76 126.52,-109.62 122.6,-119.46 129.59,-119.76"/&gt;
+&lt;path fill="none"  d="M124.31,-143.7C124.73,-136.41 125.22,-127.73 125.69,-119.54"/&gt;
+&lt;polygon   points="129.18,-119.8 126.26,-109.62 122.19,-119.4 129.18,-119.8"/&gt;
 &lt;/g&gt;  &lt;g id="node7" class="node"&gt;
 &lt;title&gt;
 a
@@ -842,8 +1009,8 @@ a
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)-&gt;a
 &lt;/title&gt;
-&lt;path fill="none"  d="M224.33,-143.7C223.91,-136.41 223.42,-127.73 222.95,-119.54"/&gt;
-&lt;polygon   points="226.45,-119.4 222.38,-109.62 219.46,-119.8 226.45,-119.4"/&gt;
+&lt;path fill="none"  d="M223.58,-143.7C223.27,-136.41 222.89,-127.73 222.54,-119.54"/&gt;
+&lt;polygon   points="226.04,-119.46 222.12,-109.62 219.05,-119.76 226.04,-119.46"/&gt;
 &lt;/g&gt;  &lt;g id="node9" class="node"&gt;
 &lt;title&gt;
 Bool2
@@ -854,8 +1021,8 @@ Bool2
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)-&gt;Bool2
 &lt;/title&gt;
-&lt;path fill="none"  d="M242.11,-145.12C251.94,-135.82 264.5,-123.93 275.36,-113.67"/&gt;
-&lt;polygon   points="277.65,-116.32 282.51,-106.9 272.84,-111.23 277.65,-116.32"/&gt;
+&lt;path fill="none"  d="M240.97,-145.46C251.01,-136.09 263.97,-123.99 275.13,-113.57"/&gt;
+&lt;polygon   points="277.21,-116.43 282.13,-107.04 272.43,-111.31 277.21,-116.43"/&gt;
 &lt;/g&gt;  &lt;g id="node8" class="node"&gt;
 &lt;title&gt;
 Int2
@@ -900,7 +1067,7 @@ instances and report an ambiguity error since both of them match.&lt;/p&gt;
 traverse all of the red nodes.&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="341pt" height="260pt" viewBox="0.00 0.00 340.64 260.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -909,44 +1076,44 @@ traverse all of the red nodes.&lt;/p&gt;
 &lt;title&gt;
 C
 &lt;/title&gt;
-&lt;ellipse fill="none" stroke="red" cx="124.32" cy="-234" rx="30.69" ry="18"/&gt;
-&lt;text text-anchor="middle" x="124.32" y="-229.32" font-family="Times,serif" font-size="14.00"&gt;C(_)&lt;/text&gt;
+&lt;ellipse fill="none" stroke="red" cx="123.32" cy="-234" rx="30.69" ry="18"/&gt;
+&lt;text text-anchor="middle" x="123.32" y="-229.32" font-family="Times,serif" font-size="14.00"&gt;C(_)&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="node2" class="node"&gt;
 &lt;title&gt;
 Int
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="37.32" cy="-162" rx="27" ry="18"/&gt;
-&lt;text text-anchor="middle" x="37.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;Int&lt;/text&gt;
+&lt;ellipse fill="none"  cx="36.32" cy="-162" rx="27" ry="18"/&gt;
+&lt;text text-anchor="middle" x="36.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;Int&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="edge1" class="edge"&gt;
 &lt;title&gt;
 C-&gt;Int
 &lt;/title&gt;
-&lt;path fill="none"  d="M106.71,-218.83C94.09,-208.68 76.89,-194.83 62.77,-183.47"/&gt;
-&lt;polygon   points="65.18,-180.92 55.19,-177.38 60.79,-186.38 65.18,-180.92"/&gt;
+&lt;path fill="none"  d="M105.71,-218.83C93.09,-208.68 75.89,-194.83 61.77,-183.47"/&gt;
+&lt;polygon   points="64.18,-180.92 54.19,-177.38 59.79,-186.38 64.18,-180.92"/&gt;
 &lt;/g&gt;  &lt;g id="node3" class="node"&gt;
 &lt;title&gt;
 List(_)
 &lt;/title&gt;
-&lt;ellipse fill="none"  cx="124.32" cy="-162" rx="42.26" ry="18"/&gt;
-&lt;text text-anchor="middle" x="124.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;List(_)&lt;/text&gt;
+&lt;ellipse fill="none"  cx="123.32" cy="-162" rx="42.26" ry="18"/&gt;
+&lt;text text-anchor="middle" x="123.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;List(_)&lt;/text&gt;
 &lt;/g&gt;  &lt;g id="edge2" class="edge"&gt;
 &lt;title&gt;
 C-&gt;List(_)
 &lt;/title&gt;
-&lt;path fill="none"  d="M124.32,-215.7C124.32,-208.41 124.32,-199.73 124.32,-191.54"/&gt;
-&lt;polygon   points="127.82,-191.62 124.32,-181.62 120.82,-191.62 127.82,-191.62"/&gt;
+&lt;path fill="none"  d="M123.32,-215.7C123.32,-208.41 123.32,-199.73 123.32,-191.54"/&gt;
+&lt;polygon   points="126.82,-191.62 123.32,-181.62 119.82,-191.62 126.82,-191.62"/&gt;
 &lt;/g&gt;  &lt;g id="node6" class="node"&gt;
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)
 &lt;/title&gt;
-&lt;ellipse fill="none" stroke="red" cx="225.32" cy="-162" rx="40.69" ry="18"/&gt;
-&lt;text text-anchor="middle" x="225.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;(_,
+&lt;ellipse fill="none" stroke="red" cx="224.32" cy="-162" rx="40.69" ry="18"/&gt;
+&lt;text text-anchor="middle" x="224.32" y="-157.32" font-family="Times,serif" font-size="14.00"&gt;(_,
 _)&lt;/text&gt; &lt;/g&gt;  &lt;g id="edge5" class="edge"&gt;
 &lt;title&gt;
 C-&gt;(\&lt;em&gt;, \&lt;/em&gt;)
 &lt;/title&gt;
-&lt;path fill="none" stroke="red" d="M143.32,-219.83C157.74,-209.84 177.88,-195.88 194.59,-184.3"/&gt;
-&lt;polygon fill="red" stroke="red" points="196.49,-187.24 202.72,-178.67 192.5,-181.49 196.49,-187.24"/&gt;
+&lt;path fill="none" stroke="red" d="M142.32,-219.83C156.74,-209.84 176.88,-195.88 193.59,-184.3"/&gt;
+&lt;polygon fill="red" stroke="red" points="195.49,-187.24 201.72,-178.67 191.5,-181.49 195.49,-187.24"/&gt;
 &lt;/g&gt;  &lt;g id="node4" class="node"&gt;
 &lt;title&gt;
 Bool
@@ -957,8 +1124,8 @@ Bool
 &lt;title&gt;
 List(_)-&gt;Bool
 &lt;/title&gt;
-&lt;path fill="none"  d="M104.57,-145.81C91.71,-135.92 74.75,-122.87 60.61,-111.99"/&gt;
-&lt;polygon   points="63.05,-109.45 52.99,-106.13 58.78,-115 63.05,-109.45"/&gt;
+&lt;path fill="none"  d="M103.79,-145.81C91.15,-135.98 74.52,-123.04 60.59,-112.21"/&gt;
+&lt;polygon   points="63.13,-109.75 53.08,-106.37 58.83,-115.27 63.13,-109.75"/&gt;
 &lt;/g&gt;  &lt;g id="node5" class="node"&gt;
 &lt;title&gt;
 String
@@ -969,8 +1136,8 @@ String
 &lt;title&gt;
 List(_)-&gt;String
 &lt;/title&gt;
-&lt;path fill="none"  d="M125.06,-143.7C125.37,-136.41 125.75,-127.73 126.1,-119.54"/&gt;
-&lt;polygon   points="129.59,-119.76 126.52,-109.62 122.6,-119.46 129.59,-119.76"/&gt;
+&lt;path fill="none"  d="M124.31,-143.7C124.73,-136.41 125.22,-127.73 125.69,-119.54"/&gt;
+&lt;polygon   points="129.18,-119.8 126.26,-109.62 122.19,-119.4 129.18,-119.8"/&gt;
 &lt;/g&gt;  &lt;g id="node7" class="node"&gt;
 &lt;title&gt;
 a
@@ -981,8 +1148,8 @@ a
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)-&gt;a
 &lt;/title&gt;
-&lt;path fill="none" stroke="red" d="M224.33,-143.7C223.91,-136.41 223.42,-127.73 222.95,-119.54"/&gt;
-&lt;polygon fill="red" stroke="red" points="226.45,-119.4 222.38,-109.62 219.46,-119.8 226.45,-119.4"/&gt;
+&lt;path fill="none" stroke="red" d="M223.58,-143.7C223.27,-136.41 222.89,-127.73 222.54,-119.54"/&gt;
+&lt;polygon fill="red" stroke="red" points="226.04,-119.46 222.12,-109.62 219.05,-119.76 226.04,-119.46"/&gt;
 &lt;/g&gt;  &lt;g id="node9" class="node"&gt;
 &lt;title&gt;
 Bool2
@@ -993,8 +1160,8 @@ Bool2
 &lt;title&gt;
 (\&lt;em&gt;, \&lt;/em&gt;)-&gt;Bool2
 &lt;/title&gt;
-&lt;path fill="none" stroke="red" d="M242.11,-145.12C251.94,-135.82 264.5,-123.93 275.36,-113.67"/&gt;
-&lt;polygon fill="red" stroke="red" points="277.65,-116.32 282.51,-106.9 272.84,-111.23 277.65,-116.32"/&gt;
+&lt;path fill="none" stroke="red" d="M240.97,-145.46C251.01,-136.09 263.97,-123.99 275.13,-113.57"/&gt;
+&lt;polygon fill="red" stroke="red" points="277.21,-116.43 282.13,-107.04 272.43,-111.31 277.21,-116.43"/&gt;
 &lt;/g&gt;  &lt;g id="node8" class="node"&gt;
 &lt;title&gt;
 Int2
@@ -1051,7 +1218,7 @@ with the blue path.&lt;/p&gt;
 &lt;/style&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="565pt" height="476pt" viewBox="0.00 0.00 564.84 476.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -1302,7 +1469,7 @@ labels.&lt;/p&gt;
 to &lt;code&gt;{ x : Int, y : Bool }&lt;/code&gt; and subsequently unrolled to&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="174pt" height="188pt" viewBox="0.00 0.00 173.55 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -1344,7 +1511,7 @@ Int-&gt;Bool
 &lt;p&gt;and &lt;code&gt;{ x : Int, y : Bool, x : String | a }&lt;/code&gt; becomes&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="267pt" height="332pt" viewBox="0.00 0.00 267.20 332.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;
@@ -1416,7 +1583,7 @@ extension variable if applicable.&lt;/p&gt;
 &lt;p&gt;For example, this is how one possible match could behave&lt;/p&gt;
 &lt;div class="dot-output"&gt;
 &lt;?xml version="1.0" encoding="UTF-8" standalone="no"?&gt;
-&lt;!-- Generated by graphviz version 9.0.0 (0)
+&lt;!-- Generated by graphviz version 12.0.0 (0)
  --&gt;
 
 &lt;svg width="596pt" height="260pt" viewBox="0.00 0.00 596.42 260.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"&gt;

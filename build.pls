@@ -370,7 +370,8 @@ let posts = Async.all([
         async buildPost("unsafeCoerceDict"),
         async buildPost("coherentIP"),
         async buildPost("insttypes"),
-        async buildPost("classTries")
+        async buildPost("classTries"),
+        async buildPost("newtypes"),
     ])
 
 let _ = async buildPage("about.html", "about.html", newFloraEnv())
@@ -378,5 +379,5 @@ let _ = async buildPage("about.html", "about.html", newFloraEnv())
 let environments = List.reverse(await posts)
 
 let _ = async buildIndex(environments)
-let _ = async buildRSS(environments, "19-02-2024")
+let _ = async buildRSS(environments, "07-10-2024")
 
