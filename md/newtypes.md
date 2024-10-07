@@ -2,7 +2,7 @@
 let title = "Newtypes Are Better Than Abstract Type Synonyms"
 let date = "07 October 2024"
 let pubDate = "2024-10-07"
-let reddit = "Ihaventupdatedthelinkyetsorry"
+let reddit = "https://www.reddit.com/r/ProgrammingLanguages/comments/1fxvqvy/newtypes_are_better_than_abstract_type_synonyms/"
 }}
 One of OCaml's flagship features is what they call "abstract types".
 In essence, this lets programmers declare a type, even as a type synonym inside a module and, by hiding its definition in the signature, make it appear abstract to the outside world.
