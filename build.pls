@@ -362,6 +362,7 @@ let buildPosts(posts) = {
 
 !mkdir "-p" "docs"
 
+!cp "CNAME" "docs/CNAME"
 !cp "-r" "js" "docs/js"
 !cp "-r" "css" "docs/css"
 
