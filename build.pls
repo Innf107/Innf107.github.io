@@ -5,7 +5,7 @@ options {
     "--watch-interval" (watchInterval = "0.25s"): "Interval to check for file modifications. This accepts any format accepted by 'sleep'"
 }
 
-!bash "-c" "rm -rf out/*"
+!bash "-c" "rm -rf docs/*"
 !mkdir "-p" "_build"
 
 # :(
@@ -257,7 +257,7 @@ let buildPost(name) = withFloraSession(\session -> {
 
     let fullPostHTML = evalTemplate(session, env, "post.html")
 
-    writeFile("out/posts/${name}.html", fullPostHTML)
+    writeFile("docs/posts/${name}.html", fullPostHTML)
 
     PostDetails(
         { title = readVar(env, "title")
@@ -288,7 +288,7 @@ let buildIndex(posts) = withFloraSession (\session -> {
     
     let fullIndex = evalTemplate(session, env, "index.html")
 
-    writeFile("out/index.html", fullIndex)
+    writeFile("docs/index.html", fullIndex)
 })
 
 let buildRSS : List(PostDetails) -> ()
@@ -322,7 +322,7 @@ let buildRSS(posts) = withFloraSession (\session -> {
     writeBuildFile(session, env, "items", items)
 
     let rssFile = evalTemplate(session, env, "rss.xml")
-    writeFile("out/rss.xml", rssFile)
+    writeFile("docs/rss.xml", rssFile)
 })
 
 let buildPosts(posts) = {
@@ -360,10 +360,12 @@ let buildPosts(posts) = {
     postDetails
 }
 
-!cp "-r" "js" "out/js"
-!cp "-r" "css" "out/css"
+!mkdir "-p" "docs"
 
-!mkdir "-p" "out/posts"
+!cp "-r" "js" "docs/js"
+!cp "-r" "css" "docs/css"
+
+!mkdir "-p" "docs/posts"
 
 let postDetails = buildPosts(reverse([
         "unsafeCoerceDict",
