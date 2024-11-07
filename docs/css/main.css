@@ -97,6 +97,12 @@ article .date {
     font-size: 20pt;
 }
 
+@media screen and (max-width: 768px) {
+    .date {
+        font-size: 1pt;
+    }
+}
+
 .post-list li:hover {
     background: linear-gradient(to right, var(--primary-start), var(--primary-end));
     background-clip: text;
@@ -123,7 +129,14 @@ article .date {
 .socials li a {
     display: block;
     color: white;
+    font-size: 4em;
 }
+@media screen and (max-width: 768px) {
+    .socials li a {
+        font-size: 2em;
+    }
+}
+
 
 .socials li:hover {
     background: linear-gradient(to right, var(--primary-start), var(--primary-end));
@@ -150,6 +163,12 @@ article.post {
 .post-header {
     font-size: 50pt;
     margin: 0;
+}
+
+@media screen and (max-width: 768px) {
+    .post-header {
+        font-size: 30pt;
+    }
 }
 
 .underline-wrapper {
