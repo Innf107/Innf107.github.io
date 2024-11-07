@@ -1,47 +1,141 @@
 #!/usr/bin/env polaris
 options {
-    "--force-rebuild" as forceRebuild: "Always rebuild every file even if it has not changed"
+    "--keep-build-artifacts" as keepBuildArtifacts: "Keep the intermediate build artifacts in _build"
+    "--watch" as watch: "Rebuild posts if they change on disk"
+    "--watch-interval" (watchInterval = "0.25s"): "Interval to check for file modifications. This accepts any format accepted by 'sleep'"
 }
 
-ensure("pandoc")
-ensure("sassc")
-ensure("jq")
-ensure("dot")
+!bash "-c" "rm -rf out/*"
+!mkdir "-p" "_build"
 
-module List = import("../polaris/lib/list.pls")
-module Async = import("../polaris/lib/async.pls")
-
-let idCounter = ref 0
-let freshId() = {
-    idCounter := idCounter! + 1
-    idCounter! - 1 
+# :(
+let lookup : forall key value. (key, List((key, value))) -> < Just(value), Nothing >
+let lookup(needle, assocList) = match assocList {
+    [] -> Nothing
+    ((key, value) :: rest) ->
+        if needle == key then
+            Just(value)
+        else
+            lookup(needle, rest)
 }
 
-!mkdir "-p" ".build"
+let reverse : forall a. List(a) -> List(a)
+let reverse(list) = {
+    let go(acc, list) = match list {
+        [] -> acc
+        (x :: xs) -> go(x :: acc, xs)
+    }
+    go([], list)
+}
+
+let dropLast : forall a. List(a) -> List(a)
+let dropLast(list) = match list {
+    [] -> []
+    [last] -> []
+    (first :: rest) -> first :: dropLast(rest)
+}
+
+# eh who cares about asymptotics anyway
+let concatStrings : List(String) -> String
+let concatStrings(strings) = match strings {
+    [] -> ""
+    (string :: rest) -> string ~ concatStrings(rest)
+}
+
+let forever : forall a r. (a, a -> a) -> r
+let forever(initial, f) = {
+    forever(f(initial), f)
+}
+
+let allAsync : forall a. List(Promise(a)) -> Promise(List(a))
+let allAsync(promises) = async [await promise | let promise <- promises]
+
+let finally : forall a. (() -> (), () -> a) -> a
+let finally(cleanup, cont) = {
+    let result = try {
+        cont()
+    } with {
+        exn -> {
+            cleanup()
+            raise exn
+        }
+    }
+    cleanup()
+    result
+}
+
+let lastModificationTime : String -> Number
+let lastModificationTime(file) = {
+    parseInt(!stat "--format=%Y" file)
+}
+
+data FloraSession = String
+
+let withFloraSession : forall r. (FloraSession -> r) -> r
+let withFloraSession(cont) = {
+    let id = !bash "-c" "echo $RANDOM"
+    
+    !mkdir "-p" "_build/${id}"
+
+    let cleanup() = {
+        if not keepBuildArtifacts then {
+            !rm "-rf" "_build/${id}"
+            ()
+        } else {}
+    }
+
+    finally(cleanup,\ -> cont(FloraSession(id)))
+}
+
 
 data FloraEnv = String
 
-let _ = !flora "--write-env" ".build/flora_env_base" "flora/base.flora"
+let newEnv : FloraSession -> FloraEnv
+let newEnv(session) = {
+    let id = !bash "-c" "echo $RANDOM"
 
-let newFloraEnv() = {
-    let file = ".build/flora_env_${toString(freshId())}"
-    !cp ".build/flora_env_base" file
-    FloraEnv(file)
+    let env = FloraEnv("_build/${session!}/env_${id}")
+
+    "" | flora "--write-env" (env!)
+
+    env
 }
 
-let runFlora(flags : List(String), content) = {
-    let continuationFile = ".build/flora_continuation_" ~ toString(freshId())
-    let flags = List.append(["--effects", continuationFile], flags)
+let readVar : (FloraEnv, String) -> String
+let readVar(env, name) = {
+    name | flora "--read-env" (env!)
+}
 
-    let handleEffect(stdout) = {
-        let effect = stdout | jq "-er" ".effect | strings"
-        let result = match effect {
-            "include" -> {
-                let file = stdout | jq "-er" ".arguments[0] | strings"
-                !cat file
-            }
-            "dot" -> {
-                let argument = stdout | jq "-er" ".arguments[0] | strings"
+let writeVar : (FloraEnv, String, String) -> ()
+let writeVar(env, name, value) = {
+    "" | flora "--read-env" (env!) "--bind" name "--string" value "--write-env" (env!)
+    ()
+}
+
+let writeBuildFile : (FloraSession, FloraEnv, String, String) -> ()
+let writeBuildFile(session, env, name, value) = {
+    let id = !bash "-c" "echo $RANDOM"
+
+    let buildFile = "_build/${session!}/build_${id}"
+
+    writeFile(buildFile, value)
+
+    "" | flora "--read-env" (env!) "--bind" name "--file" buildFile "--write-env" (env!)
+    ()
+}
+
+exception InvalidFloraEffectArguments(effect : String, arguments : List(String))
+    = "Invalid arguments for effect '${effect}': ${toString(arguments)}"
+
+exception InvalidFloraEffect(effect : String, arguments : List(String))
+    = "Invalid flora effect '${effect}' performed with arguments: ${toString(arguments)}"
+
+
+let handleEffect : forall r. (FloraSession, FloraEnv, String, List(String), String -> String) -> String
+let handleEffect(session, env, effect, arguments, continue) = {
+    match effect {
+        "dot" -> match arguments {
+            [argument] -> {
                 let svgOutput = argument | dot "-Tsvg"
 
                 let preprocessed = 
@@ -51,333 +145,241 @@ let runFlora(flags : List(String), content) = {
                     regexpReplace("<!DOCTYPE([^a]|a)*?>", "", svgOutput))
                 "<div class=\"dot-output\">${preprocessed}</div>"
             }
-            _ -> fail("Unhandled effect: " ~ effect)
+            _ -> raise InvalidFloraEffectArguments(effect, arguments)
         }
-        try {
-            !flora flags "--continue" "--string" result continuationFile
-        } with {
-            CommandFailure(output) as error -> {
-                if (output.exitCode == 100) then {
-                    handleEffect(output.stdout)
+        _ -> raise InvalidFloraEffect(effect, arguments)
+    }
+}
+
+let runFlora : (FloraSession, FloraEnv, String) -> String
+let runFlora(session, env, code) = {
+    let continuationFile = "_build/${session!}/flora-continuation"
+
+    let handleSuspensionOrError(exn) = {
+        let continue(argument) = 
+            try !flora "--effects" continuationFile "--write-env" (env!) "--continue" "--string"  argument continuationFile with {
+                exn -> handleSuspensionOrError(exn)
+            }
+
+        match exn {
+            CommandFailure(details) -> match details.exitCode {
+                100 -> {
+                    let effect = details.stdout | jq "-r" ".effect"
+
+                    # jq adds a \0 *after* every argument but we can only parse between them so we need to filter out the last one
+                    let arguments = dropLast(split("\0", details.stdout | jq "--raw-output0" ".arguments[]"))
+
+                    handleEffect(session, env, effect, arguments, continue)
+                }
+                _ -> raise exn
+            }
+            _ -> raise exn
+        }
+    }
+
+    try code | flora "--effects" continuationFile "--read-env" (env!) "--write-env" (env!) with {
+        exn -> handleSuspensionOrError(exn)
+    }
+}
+
+
+let processMarkup : (FloraSession, FloraEnv, String) -> String
+let processMarkup(session, env, contents) = {
+
+    let floraReferences = ref []
+
+    let processInlineFlora(matchResult) = {
+        let code = match matchResult {
+            [_, code] -> code
+            _ -> fail("flora code regex returned invalid format")
+        }
+
+        let placeholder = !bash "-c" "echo $RANDOM"
+
+        floraReferences := (placeholder, code) :: floraReferences!
+
+        "{{${placeholder}}}"
+    } 
+
+    let markdown = regexpTransformAll("\\{\\{((?:a|[^a])*?)\\}\\}", processInlineFlora, contents)
+
+    let htmlWithPlaceholders = async { markdown | pandoc }
+
+    let floraReferences = reverse(floraReferences!)
+
+    let evaluatedFloraReferences = [(key, runFlora(session, env, value)) | let (key, value) <- floraReferences ]
+
+    let replaceFloraReference(regexpResults) = match regexpResults {
+        [_, reference] -> match lookup(reference, evaluatedFloraReferences) {
+            Nothing -> fail("Flora reference '${reference}' not found in the list of evaluated flora code")
+            Just(result) -> result
+        }
+        _ -> fail("invalid regexp format")
+    }
+
+    regexpTransformAll("\\{\\{(\\d+)\\}\\}", replaceFloraReference, await htmlWithPlaceholders)
+}
+
+let evalTemplate : (FloraSession, FloraEnv, String) -> String
+let evalTemplate(session, env, file) = {
+    let contents = !cat "templates/${file}"
+
+    let interpolate(regexpResults) = match regexpResults {
+        [_, code] -> runFlora(session, env, code)
+        _ -> fail("invalid regexp format")
+    }
+
+    regexpTransformAll("\\{\\{((?:a|[^a])*?)\\}\\}", interpolate, contents)
+}
+
+data PostDetails = {
+    title : String,
+    date : String,
+    localLink : String,
+    fullURL : String,
+    body : String
+}
+
+let buildPost : String -> PostDetails
+let buildPost(name) = withFloraSession(\session -> {
+    print("Building post ${name}")
+
+    let filePath = "md/${name}.md"
+    
+    let fileContents = !cat filePath
+
+    let env = newEnv(session)
+
+    let processedPostBody = processMarkup(session, env, fileContents)
+
+    writeBuildFile(session, env, "body", processedPostBody)
+    writeVar(env, "url", "https://welltypedwit.ch/posts/${name}.html")
+
+    let fullPostHTML = evalTemplate(session, env, "post.html")
+
+    writeFile("out/posts/${name}.html", fullPostHTML)
+
+    PostDetails(
+        { title = readVar(env, "title")
+        , date = readVar(env, "date")
+        , localLink = "/posts/${name}.html"
+        , fullURL = "https://welltypedwit.ch/posts/${name}.html"
+        , body = processedPostBody
+        })
+})
+
+let buildIndex : List(PostDetails) -> ()
+let buildIndex(posts) = withFloraSession (\session -> {
+    print("Building the index")
+
+    let renderEntry(details) = {
+        let env = newEnv(session)
+        writeVar(env, "title", details!.title)
+        writeVar(env, "link", details!.localLink)
+        writeVar(env, "date", details!.date)
+
+        evalTemplate(session, env, "index_entry.html")
+    }
+
+    let indexEntries = concatStrings([ renderEntry(details) | let details <- posts ])
+
+    let env = newEnv(session)
+    writeVar(env, "entries", indexEntries)
+    
+    let fullIndex = evalTemplate(session, env, "index.html")
+
+    writeFile("out/index.html", fullIndex)
+})
+
+let buildRSS : List(PostDetails) -> ()
+let buildRSS(posts) = withFloraSession (\session -> {
+    print("Building the RSS feed")
+    
+    let renderItem(details) = {
+        let env = newEnv(session)
+
+        # Technically, RSS uses a version of rfc822 that allows 4 digit dates
+        # but as far as i can tell, rfc5322 is just a stricter version of this
+        # so this should be fine (hopefully)
+        let rfc5322Date = !date "-R" "--date" (details!.date)
+
+        writeVar(env, "title", details!.title)
+        writeVar(env, "url", details!.fullURL)
+        writeVar(env, "pubDate", rfc5322Date)
+        writeBuildFile(session, env, "body", details!.body)
+
+        evalTemplate(session, env, "rss_item.xml")
+    }
+    let items = concatStrings([ renderItem(post) | let post <- posts ])
+
+    let buildDate = !date "-R"
+    
+    let env = newEnv(session)
+
+    let lastBuildDate = !date "-R"
+
+    writeVar(env, "lastBuildDate", lastBuildDate)
+    writeBuildFile(session, env, "items", items)
+
+    let rssFile = evalTemplate(session, env, "rss.xml")
+    writeFile("out/rss.xml", rssFile)
+})
+
+let buildPosts(posts) = {
+    let postDetails = allAsync([ async buildPost(post) | let post <- posts ])
+
+    let _ = async if watch then {
+        let timestamps = [(post, lastModificationTime("md/${post}.md")) | let post <- posts]
+        
+        let update(timestamps) = match timestamps {
+            [] -> []
+            (post, time) :: rest -> {
+                let newTime = lastModificationTime("md/${post}.md")
+                if time < newTime then {
+                    # We can't update post details in watch mode. This should be fine though since
+                    # nothing so fundamental should change often and even if it does it will be fixed on the
+                    # next run of the script
+                    let _postDetails = buildPost(post)
+                    
+                    # It is important that we do *not* recalculate newTime here since there might have been
+                    # changes while we built, which we want to trigger a new rebuild on the next iteration
+                    (post, newTime) :: update(rest)
                 } else {
-                    raise error
+                    (post, time) :: update(rest)
                 }
             }
         }
-    }
-
-    try {
-        let result = content | flora flags
-        result
-    } with {
-        CommandFailure(output) as error -> {
-            if (output.exitCode == 100) then {
-                handleEffect(output.stdout)
-            } else {
-                raise error
-            }
-        }
-    }
-}
-
-let evalFlora(env : FloraEnv, code) = {
-    runFlora(["--read-env", env!], code)
-}
-
-
-let defineFloraVariablesRaw(env : FloraEnv, bindings) = {
-    let renderBinding((name, binding)) = match binding {
-        String(value) -> ["--bind", name, "--string", value]
-        FilePath(path) -> ["--bind", name, "--file", path]
-    }
-
-    let definitionArgs = List.concatMap(renderBinding, bindings)
-    let _ = runFlora(List.append(["--read-env", env!, "--write-env", env!], definitionArgs), "nil")
-}
-
-
-let defineFloraVariablesWith(env, bindings) = {
-    let generateFileFor(binding) = match binding {
-        File(contents) -> {
-            let file = ".build/arg_" ~ toString(freshId())
-            writeFile(file, contents)
-            FilePath(file)
-        }
-        x -> x
-    }
-
-    let bindings = List.map(\(name, binding) -> (name, generateFileFor(binding)), bindings)
-
-    defineFloraVariablesRaw(env, bindings)
-}
-
-let defineFloraVariables(env, vars) = {
-    defineFloraVariablesRaw(env, List.map(\(name, str) -> (name, String(str)), vars))
-}
-
-# TODO: Move this to the standard library
-let concatMap : forall a b. (a -> List(b), List(a)) -> List(b)
-let concatMap(f, list) = List.foldr(\x r -> List.append(f(x), r), [], list)
-
-let at : forall a. (Number, List(a)) -> < Just(a), Nothing >
-let at(index, list) = match (index, list) {
-    (_, []) -> Nothing
-    (0, (x :: _)) -> Just(x)
-    (index, (_ :: xs)) -> at(index - 1, xs) 
-}
-
-let lookup : forall k v. (k, List((k, v))) -> < Just(v), Nothing >
-let lookup(key, list) = match List.find(\(k, v) -> k == key, list) {
-    Nothing -> Nothing
-    Just((_, value)) -> Just(value)
-}
-
-let doesFileExist(file) = {
-    try {
-        !bash "-c" ("stat '${file}' > /dev/null 2> /dev/null")
-        true
-    } with {
-        CommandFailure(_) -> false        
-    }
-}
-
-let hasChanged : { source : String, target : String } -> Bool
-let hasChanged(params) = {
-    if forceRebuild then 
-        true
-    else {
-        # TODO: Use record destructuring here
-        let source = params.source
-        let target = params.target
-
-        if not (doesFileExist(source)) then
-            fail("hasChanged called on non-existent source file '${source}'")
-        else if not (doesFileExist(target)) then
-            true
-        else {
-            let sourceTimestamp = parseInt(!stat "-c" "%Y" source)
-            let targetTimestamp = parseInt(!stat "-c" "%Y" target)
-
-            sourceTimestamp > targetTimestamp
-        }
-    }
-}
-
-let extractTags : String -> List((String, String))
-let extractTags(file) = {
-    let keys = lines(!grep "-Po" "(?<=<!--).+?(?=:)" file);
-    let values = lines(!grep "-Po" "(?<=:).+?(?=-->)" file);
-    List.zip(keys, values);
-};
-
-let escapeHTML(content) = {
-    let toReplace = 
-        [ ("<", "&lt;")
-        , (">", "&gt;")
-        , ("<!--.*?-->", "")
-        ]
-
-    List.foldr(\x r -> regexpReplace(List.fst(x), List.snd(x), r), content, toReplace)
-};
-
-let collectTooltips : String -> List((String, String))
-let collectTooltips(content) = {
-    let definitionSection = match regexpMatchGroups("<!--#tooltips\\s*((?:[^a]|a)+?)\\s*-->", content) {
-        [] -> ""
-        [[_, section]] -> section
-        sections -> fail("Invalid tooltip definition sections (there might be more than one?): ${toString(sections)}")
-    }
-
-    let tooltips = regexpMatchGroups("°(.+?)°\\s*:\\s*([^°]*)", definitionSection)
-
-    concatMap(\[_, def, content] -> [(def, content), (escapeHTML(def), content)], tooltips)
-}
-
-let replaceTags : (List((String, String)), String) -> String
-let replaceTags(tags, content) = {
-    List.foldr(\(key, value) r -> replace("{{${key}}}", value, r), content, tags)
-};
-
-let tooltipTemplate = !cat "templates/tooltip.html"
-
-let replaceTooltips : (List((String, String)), String) -> String 
-let replaceTooltips(tooltips, content) = {
-    let addTooltipHTML(name) = match lookup(name, tooltips) {
-        Nothing -> fail("Invalid tooltip: °" ~ name ~ "°")
-        Just(tooltipContent) -> {
-            replaceTags([("name", name), ("tooltip", tooltipContent)], tooltipTemplate)
-        }
-    }
-
-    regexpTransformAll("°(.*?)°", \[_, x] -> addTooltipHTML(x), content)
-}
-
-
-let mdTags = [
-        ("lang", !cat "static-html/lang-tag-start.html")
-    ,   ("/lang", !cat "static-html/lang-tag-end.html")
-    ,   ("haskell-specific", !cat "static-html/haskell-specific-start.html")
-    ,   ("/haskell-specific", !cat "static-html/haskell-specific-end.html")
-    ]
-
-let pandoc(contents) = {
-    contents | pandoc 
-        "--katex" 
-        "--syntax-definition=highlighting/polaris.xml"
-        "--syntax-definition=highlighting/flora.xml"
-}
-
-let evalTemplate(template, env : FloraEnv) = {
-    regexpTransformAll("\\{\\{((?:a|[^a])*?)\\}\\}", \[_, x] -> evalFlora(env, x), template)
-}
-
-
-let buildPage(templateFile, outputFile, env) = {
-    print("Building page: " ~ outputFile)
-    let output = evalTemplate(!cat ("templates/" ~ templateFile), env)
-    writeFile(outputFile, output)
-}
-
-let buildPost(name) = {
-    # TODO: This is doing a lot of unnecessary work even if the file has not changed
-
-    print("Building post: " ~ name);
-    let markdownPath = "md/${name}.md";
-
-    let htmlPath = "posts/${name}.html";
-
-    let timestampPath = ".build/${name}.timestamp"
-
-    let tooltips = collectTooltips(!cat markdownPath)
-
-    let floraEnv = newFloraEnv()
-
-    let evaluatedMarkdown = regexpTransformAll
-                    ( "\\{\\{((?:a|[^a])*?)\\}\\}"
-                    , \[_, x] -> 
-                        runFlora(["--read-env", floraEnv!, "--write-env", floraEnv!], x)
-                    , !cat markdownPath)
-    
-    let title = evalFlora(floraEnv, "title")
-
-    let titleNoCode = regexpTransformAll("<code>(.+?)</code>", \groups -> groups[1], title)
-
-    let htmlContent =
-        if hasChanged({source=markdownPath, target=timestampPath}) then {
-            !touch timestampPath
-
-            let htmlContent = replaceTooltips(tooltips, pandoc(evaluatedMarkdown))
-
-            writeFile(".build/${name}_body.html", htmlContent)
-
-            htmlContent
-        } else {
-            print("No changes to post: ${name}")
-            # If the file has not changed, we can get its content from the .build directory
-            !cat (".build/${name}_body.html")
-        }
-
-    defineFloraVariablesWith
-        ( floraEnv
-        , [ ("body", File(htmlContent))
-          , ("titleNoCode", String(titleNoCode))
-          , ("link", String("https://prophetlabs.de/posts/${name}.html"))
-          ])
-
-
-    let postContent = evalTemplate(!cat "templates/post.html", floraEnv)
-
-    defineFloraVariablesWith(floraEnv, [("content", File(escapeHTML(htmlContent)))])
-
-    writeFile(htmlPath, postContent)
-    floraEnv
-}
-
-let buildIndex(environments) = {
-    let summaryTemplate = !cat "templates/post-summary.html";
-
-    let summaries = List.foldr(\x r -> x ~ r, "", List.map(\env -> evalTemplate(summaryTemplate, env), environments))
-
-    let env = newFloraEnv()
-
-    defineFloraVariables(env, [("postSummaries", summaries)])
-
-    buildPage("index.html", "index.html", env)
-}
-
-let buildRSS(environments, pubDate) = {
-
-    let itemTemplate = !cat "templates/rss-item.xml";
-
-    let items = List.foldr(\x r -> x ~ r, "", List.map(\env -> evalTemplate(itemTemplate, env), environments))
-
-    let env = newFloraEnv()
-
-    defineFloraVariablesWith
-        (env
-        , [ ("rssItems", File(items)) 
-          , ("pubDate", String(pubDate))
-          , ("lastBuildDate", String(pubDate))
-          ])
-
-    buildPage("rss.xml", "rss.xml", env)
-}
-
-let buildScss() = {
-    let files = lines(!find "scss/" "-name" "*.scss")
-    List.for(files, \file -> {
-        let targetFile = "assets/${!basename "-s" ".scss" file}.css"
-
-        if hasChanged({source = file, target = targetFile}) then {
-            print("Building scss file: " ~ file);
-            !sassc file targetFile
-            ()
-        } else {
-            print("Skipping unchanged scss file: " ~ file)
-        }
-    })
-}
-
-let buildExtra(path) = {
-    let renderedPath = "${!dirname path}/" ~ "${!basename "-s" ".md" path}.html"
-
-    if hasChanged({source=path, target=renderedPath}) then {
-        let env = newFloraEnv()
-
-        defineFloraVariables(env, [("link", "https://prophetlabs.de/${renderedPath}")])
-
-        let evaluatedMarkdown = regexpTransformAll
-                        ( "\\{\\{((?:a|[^a])*?)\\}\\}"
-                        , \[_, x] -> 
-                            runFlora(["--read-env", env!, "--write-env", env!], x)
-                        , !cat path)
-        let renderedMarkdown = pandoc(evaluatedMarkdown)
-
-        defineFloraVariablesWith(env, [("body", File(renderedMarkdown))])
-
-        let rendered = evalTemplate(!cat "templates/extra.html", env)
-
-        writeFile(renderedPath , rendered)
+        forever(timestamps, \timestamps -> {
+            let newTimestamps = update(timestamps)
+            !sleep watchInterval
+            newTimestamps
+        })
     }
     else {}
+
+    postDetails
 }
 
-let _ = async buildScss()
+!cp "-r" "js" "out/js"
+!cp "-r" "css" "out/css"
 
-let _ = Async.all([async buildExtra(file) | let file <- lines(!find "extras" "-type" "f" "-name" "*.md")])
+!mkdir "-p" "out/posts"
 
-let posts = Async.all([
-        async buildPost("unsafeCoerceDict"),
-        async buildPost("coherentIP"),
-        async buildPost("insttypes"),
-        async buildPost("classTries"),
-        async buildPost("newtypes"),
+let postDetails = buildPosts(reverse([
+        "unsafeCoerceDict",
+        "coherentIP",
+        "insttypes",
+        "classTries",
+        "newtypes",
+    ]))
+
+let _ = await allAsync([
+        async buildIndex(await postDetails),
+        async buildRSS(await postDetails),
     ])
 
-let _ = async buildPage("about.html", "about.html", newFloraEnv())
-
-let environments = List.reverse(await posts)
-
-let _ = async buildIndex(environments)
-let _ = async buildRSS(environments, "07-10-2024")
+if not (keepBuildArtifacts || watch) then {
+    !rm "-rf" "_build"
+    ()
+} else {}
 

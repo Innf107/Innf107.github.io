@@ -1,11 +1,10 @@
 <rss version="2.0">
     <channel>
-        <title>Prophetlabs</title>
-        <description>My Blog</description>
-        <link>https://prophetlabs.de</link>
-        <pubDate>{{pubDate}}</pubDate>
+        <title>welltypedwit.ch</title>
+        <link>https://welltypedwit.ch</link>
+        <description>welltypedwitch's blog</description>
+        <language>en-us</language>
         <lastBuildDate>{{lastBuildDate}}</lastBuildDate>
-        <ttl>60</ttl>
-        {{rssItems}}
+        {{items}}
     </channel>
 </rss>

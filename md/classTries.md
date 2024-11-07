@@ -2,7 +2,7 @@
 let title = "Blazingly Fast™ Type Class Resolution with Tries"
 let date = "19 February 2024"
 let pubDate = "2024-02-19"
-let reddit = "https://www.reddit.com/r/ProgrammingLanguages/comments/1auxy31/blazingly_fast_type_class_resolution_with_tries/"
+let reddit = "Ihaventupdatedthelinkyetsorry"
 }}
 
 One of the more fundamental hurdles when implementing type classes is instance resolution.
@@ -166,8 +166,8 @@ digraph {
     C -> Int;
     C -> "List(_)" -> Bool;
          "List(_)" -> String;
-    C -> "(\\_, \\_)" -> a -> Int2;
-         "(\\_, \\_)" -> Bool2 -> a2;
+    C -> "(\_, \_)" -> a -> Int2;
+         "(\_, \_)" -> Bool2 -> a2;
 
     C[label = "C(_)"];
     Bool2[label="Bool"];
@@ -195,11 +195,11 @@ digraph {
     C -> Int;
     C -> "List(_)" -> Bool;
          "List(_)" -> String;
-    C -> "(\\_, \\_)" -> a -> Int2 [ color = red ];
-         "(\\_, \\_)" -> Bool2 -> a2 [ color = red ];
+    C -> "(\_, \_)" -> a -> Int2 [ color = red ];
+         "(\_, \_)" -> Bool2 -> a2 [ color = red ];
 
     C [ color = red, label = "C(_)" ];
-    "(\\_, \\_)" [ color = red ];
+    "(\_, \_)" [ color = red ];
     a [ color = red ];
     a2 [ color = red ];
     Bool2 [ color = red ];
@@ -269,8 +269,8 @@ digraph {
     Bool2 [ label = Bool ]
     List [ color = blue ];
     Int [ color = blue ];
-    Pair [ label = "(\\_, \\_)" ];
-    Pair2 [ label = "(\\_, \\_)"];
+    Pair [ label = "(\_, \_)" ];
+    Pair2 [ label = "(\_, \_)"];
     a1 [label = a]
     a2 [label = a, class = "replaced"]
 
@@ -313,7 +313,7 @@ For example, `{ y : Bool, x : Int }` will be canonicalized to `{ x : Int, y : Bo
 digraph {
     bgcolor="transparent";
 
-    "{ x : \\_, y : \\_ }" -> Int -> Bool;
+    "{ x : \_, y : \_ }" -> Int -> Bool;
 }
 """)}}
 
@@ -323,7 +323,7 @@ and `{ x : Int, y : Bool, x : String | a }` becomes
 digraph {
     bgcolor="transparent";
 
-    "{ x : \\_, x : \\_, y : \\_ | \\_ }" -> Int -> String -> Bool -> a;
+    "{ x : \_, x : \_, y : \_ | \_ }" -> Int -> String -> Bool -> a;
 }
 """)}}
 
@@ -350,7 +350,7 @@ digraph {
     "String | { y : Bool }"[color = "transparent", fontcolor = red]
     "{ y : Bool }"[color = "transparent", fontcolor = red]
 
-    rowhead[label = "{ x : \\_, z : \\_ | \\_ }"]
+    rowhead[label = "{ x : \_, z : \_ | \_ }"]
 }
 
 """)}}

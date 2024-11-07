@@ -1,7 +1,0 @@
-<feed xml:lang="en">
-    <title>Prophetlabs</title>
-    <link rel="self" href="https://prophetlabs.de/feed/atom.xml"/>
-    <link rel="alternate" href="https://prophetlabs.de"/>
-    <updated>{{updated}}</updated>
-    {{atomEntries}}
-</feed>

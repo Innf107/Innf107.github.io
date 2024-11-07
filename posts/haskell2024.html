@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="utf-8">
-    <title>{{title}}</title>
+    <title>How to Write Haskell in 2025</title>
     <meta name=viewport content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="{{title}}">
+    <meta property="og:title" content="How to Write Haskell in 2025">
     <meta property="og:site_name" content="welltypedwit.ch">
-    <meta property="og:description" content="{{title}}">
-    <meta property="twitter:title" content="{{title}}">
-    <meta property="twitter:description" content="{{title}}">
-    <meta property="twitter:url" content="{{url}}">
+    <meta property="og:description" content="How to Write Haskell in 2025">
+    <meta property="twitter:title" content="How to Write Haskell in 2025">
+    <meta property="twitter:description" content="How to Write Haskell in 2025">
+    <meta property="twitter:url" content="https://welltypedwit.ch/posts/haskell2024.html">
     <meta property="twitter:type" content="summary">
     <meta property="twitter:domain" content="welltypedwit.ch">
     <meta name="twitter:card" content="summary_large_image">
@@ -137,9 +137,46 @@
     </div>
 
     <article class="post">
-        <h1 class="post-header">{{title}}</h1>
-        <span class="date">{{date}}</span>
-        {{body}}
+        <h1 class="post-header">How to Write Haskell in 2025</h1>
+        <span class="date">25 August 2024</span>
+        <p></p>
+<p>Haskell is, in my opinion, the best practical programming language
+currently out there. Haskell is also quite an old language that has
+collected a bit of historical baggage. This means that as a beginner,
+it’s not always obvious how to set things up and write code in the most
+optimal way.</p>
+<p><strong>TODO</strong></p>
+<p>Disclaimer: These choices reflect my opinions and not every Haskeller
+might agree with then. However, I think they should be mostly
+uncontroversial and I am going to provide a justification for each one
+so you can make your own decisions.</p>
+<h2 id="enable--wall">Enable <code>-Wall</code></h2>
+<p>We’re starting off strong with probably the most important point on
+this list. When GHC was originally developed in the 90s, exhaustiveness
+checking for pattern matching wasn’t</p>
+<h2 id="enable-ghc2023">Enable <code>GHC2023</code></h2>
+<p><strong>TODO: also LANGUAGE extensions</strong></p>
+<h2 id="dont-use-string">Don’t Use <code>String</code></h2>
+<p>For historical reasons, Haskell’s <code>String</code> type is just a
+type alias for <code>[Char]</code>. This means that what one might
+expect to be a simple character array is actually a singly linked list
+of <em>boxed</em> unicode scalars! When represented as a
+<code>String</code>, “Hello, world!”, which should usually be a simple
+13 byte array, actually consists of <em>26</em> heap objects, 13 for the
+list nodes and 13 for the characters, <em>each</em> containing at least
+16 and 4 bytes respectively!</p>
+<p><strong>TODO: OverloadedStrings</strong></p>
+<h2 id="avoid-partial-functions">Avoid Partial Functions</h2>
+<p><strong>TODO: Both common stdlib functions and writing your own
+functions that panic</strong></p>
+<h2 id="avoid-linked-lists">Avoid Linked Lists</h2>
+<h2 id="avoid-point-free-style">Avoid Point Free Style</h2>
+<h2 id="pick-an-alternative-prelude">Pick an Alternative Prelude</h2>
+<h2 id="use-overloadedrecorddot">Use `OverloadedRecordDot``</h2>
+<h2 id="dont-be-scared-of-do-notation">Don’t Be Scared of Do
+Notation</h2>
+<h2 id="just-use-async">Just Use <code>async</code></h2>
+<h2 id="have-fun">Have Fun :)</h2>
         <script src="/js/main.js"></script>
     </article>
 </body>

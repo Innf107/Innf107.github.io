@@ -1,7 +1,0 @@
-<entry>
-    <title>{{title}}</title>
-    <link rel="alternate">{{link}}</link>
-    <published>{{published}</published>
-    <updated>{{updated}}</updated>
-    <content type="html">{{content}}</content>
-</entry>

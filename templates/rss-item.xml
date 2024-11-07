@@ -1,7 +1,0 @@
-<item>
-    <title>{{titleNoCode}}</title>
-    <link>{{link}}</link>
-    <guid isPremaLink="true">{{link}}</guid>
-    <pubDate>{{pubDate}}</pubDate>
-    <description>{{content}}</description>
-</item>
