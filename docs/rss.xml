@@ -4,15 +4,15 @@
         <link>https://welltypedwit.ch</link>
         <description>welltypedwitch's blog</description>
         <language>en-us</language>
-        <lastBuildDate>Tue, 31 Dec 2024 23:22:18 +0100</lastBuildDate>
+        <lastBuildDate>Tue, 31 Dec 2024 23:38:14 +0100</lastBuildDate>
         <item>
     <title>Newtypes Are Better Than Abstract Type Synonyms</title>
     <link>https://welltypedwit.ch/posts/newtypes.html</link>
     <guid isPermaLink="true">https://welltypedwit.ch/posts/newtypes.html</guid>
-    <description><![CDATA[<p> One of OCaml’s flagship features is what they call
-“abstract types”. In essence, this lets programmers declare a type, even
-as a type synonym inside a module and, by hiding its definition in the
-signature, make it appear abstract to the outside world.</p>
+    <description><![CDATA[<p> One of OCaml’s flagship features is what they call “abstract
+types”. In essence, this lets programmers declare a type, even as a type
+synonym inside a module and, by hiding its definition in the signature,
+make it appear abstract to the outside world.</p>
 <div class="sourceCode" id="cb1"><pre
 class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> Unix : <span class="kw">sig</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">type</span> file_descr <span class="co">(* abstract *)</span></span>
