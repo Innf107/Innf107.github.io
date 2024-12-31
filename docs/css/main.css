@@ -160,6 +160,10 @@ article.post {
     color: transparent
 }
 
+.post pre code {
+    color: white;
+}
+
 .post-header {
     font-size: 50pt;
     margin: 0;
@@ -202,7 +206,7 @@ a.footnote-back {
     text-decoration: none;
 }
 
-div.sourceCode {
+div.sourceCode, pre:not(.sourceCode) {
     font-size: 15pt;
     overflow: auto;
     background-color: rgb(32, 36, 37);
@@ -213,6 +217,12 @@ div.sourceCode {
 
 pre.sourceCode code {
     color: white;
+}
+
+pre:not(.sourceCode) {
+    color:white;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
 }
 
 .dot-output {
@@ -230,6 +240,35 @@ pre.sourceCode code {
 }
 .dot-output svg text {
     stroke: none;
+}
+
+blockquote {
+    border-left: 5px solid #484848;
+    margin-left: 0;
+    padding-left: 1em;
+    font-style: italic;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    text-align: center;
+}
+
+thead {
+    border-bottom-width: 1px;
+    border-bottom-color: #484848;
+    border-bottom-style: solid;
+}
+
+thead tr {
+    border: none;
+}
+
+tr {
+    border-bottom-width: 1px;
+    border-bottom-color: #222222;
+    border-bottom-style: solid;
 }
 
 /* Syntax highlighting */

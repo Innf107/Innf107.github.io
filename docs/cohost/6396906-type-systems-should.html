@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Type systems should be consistent (and probably dependently typed)</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Type systems should be consistent (and probably dependently typed)">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Type systems should be consistent (and probably dependently typed)">
+    <meta property="twitter:title" content="Type systems should be consistent (and probably dependently typed)">
+    <meta property="twitter:description" content="Type systems should be consistent (and probably dependently typed)">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/6396906-type-systems-should">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Type systems should be consistent (and probably dependently typed)</h1>
+        <span class="date">12 June 2024</span>        
+        <p>I personally believe that the most important property of a type
+system is that it has a really simple, consistent<a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>
+core. If you don’t have this, you <em>will</em> accrue accidental
+complexity over time.</p>
+<p>You can see this pretty well in Rust and TypeScript where, as an
+outsider, a lot of type system discussions are a bit strange to follow
+because it seems like they’re designing themselves into a corner much
+more than they’re arguing about anything <em>fundamental</em> to the
+problem they’re trying to solve. This isn’t a dig at either language,
+they both have pretty strong constraints that make them rely on very
+specific features so this is more or less inevitable. But they’re also
+both not exactly known for being <em>simple</em>, are they?</p>
+<p>This is actually one of the main reason why I love full spectrum
+dependent types! Some people think dependent types are complex or
+difficult but that’s just because the ways to <em>approximate</em> them
+in languages like Haskell or OCaml <em>are</em> quite complex.</p>
+<p>Dependent types on their own are actually much simpler than either of
+those languages! For example, OCaml’s module language sits on top of the
+regular term language and reinvents a lot of the term level concepts
+(functors, first class modules, (mutually) recursive modules, etc) with
+a lot of subtle but significant limitations. Similarly, Haskell’s
+<em>type</em> language reinvents a lot of what already exists in the
+term language (open/closed type families, type-level pattern matching,
+data kinds, etc.) with — you guessed it — a lot of subtle but
+significant limitations.</p>
+<p>Dependent types make things much simpler because they collapse all of
+those languages — terms, types, kinds and modules — into a single one
+that behaves consistently.</p>
+<p>With full spectrum dependent types, “can I do this with a
+functor/type family” isn’t even a question you need to ask because
+functors and type families <em>are just functions</em> and you should
+hopefully know what you can do with functions. If modules are just
+record-like values that happen to be usually known at compile time, then
+first-class-modules are just… modules that aren’t known at compile time.
+This isn’t even something you would think of as a feature, it’s just
+what naturally falls out of your type system if you remove all the
+arbitrary restrictions that a separate module language creates!</p>
+<p>Even polymorphism itself goes from something relatively opaque (at
+least to beginners) about how a function “can work for every possible
+instantiation of <code>a</code>” to a dependent function with an
+implicit parameter that happens to have type <code>Type</code>. This
+even largely gives you higher-rank polymorphism for free because a
+higher-rank function is just a higher order function where the argument
+happens to take an argument of type <code>Type</code>.</p>
+<p>If you want the simplest possible type system, it should probably
+have dependent types.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>consistent in the informal sense that it works nicely
+without a lot of exceptions, not in the formal sense of “only allows you
+to construct terms of types that correspond to true propositions”<a
+href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

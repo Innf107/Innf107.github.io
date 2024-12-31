@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>It's wild how easily imperative languages leak implementation details</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="It's wild how easily imperative languages leak implementation details">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="It's wild how easily imperative languages leak implementation details">
+    <meta property="twitter:title" content="It's wild how easily imperative languages leak implementation details">
+    <meta property="twitter:description" content="It's wild how easily imperative languages leak implementation details">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/2950282-it-s-wild-how-easily">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">It's wild how easily imperative languages leak implementation details</h1>
+        <span class="date">24 September 2023</span>        
+        <p>Functional programmers always go on about how purity makes programs
+“easier to reason about”, but honestly, it’s much more important that
+purity seems to be the only way to keep programs from leaking their
+internal implementation details <em>everywhere</em>.</p>
+<p>Imagine you’re writing an implementation of <code>List.map2</code> in
+OCaml (<code>zipWith</code> in Haskell). In OCaml, this throws an
+exception or returns <code>None</code> if the lists have different
+lengths, so you might write it like this.</p>
+<pre><code>let map2 f list1 list2 =
+    if List.compare_length list1 list2 &lt;&gt; 0 then
+        None
+    else
+        let go list1 list2 = match list1, list2 with
+            | ([], _) | (_, []) -&gt; []
+            | (x :: xs, y :: ys) -&gt; f x y :: go xs ys
+        in
+        Some (go list1 list2)</code></pre>
+<p>This works, so you publish it, get a bunch of people to use it and
+forget about it for a few months.</p>
+<p>One day you look back at your code and notice that this is kind of
+inefficient since it needs to traverse the lists twice, once to check
+the length and once to actually do the mapping. You realize that it’s
+possible to merge the two traversals and only bail out at the end, so
+you rewrite your code</p>
+<pre><code>let map2 f list1 list2 =
+    match list1, list2 with
+    | ([], []) -&gt; Some []
+    | ([], _) | (_, []) -&gt; None
+    | (x :: xs, y :: ys) -&gt; Option.map (fun rest -&gt; f x y :: rest) (map2 f xs ys)</code></pre>
+<p>And congrats: You just broke your public interface!</p>
+<p>If <code>f</code> performs a side effect, the first implementation
+would never perform that effect on lists with different lengths, whereas
+the second one will until it hits the end of the shorter one.</p>
+<p>Good luck finding that bug.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

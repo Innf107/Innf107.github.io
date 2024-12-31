@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>TemplateHaskell crimes</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="TemplateHaskell crimes">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="TemplateHaskell crimes">
+    <meta property="twitter:title" content="TemplateHaskell crimes">
+    <meta property="twitter:description" content="TemplateHaskell crimes">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/439858-template-haskell-crim">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">TemplateHaskell crimes</h1>
+        <span class="date">24 November 2022</span>        
+        <p>Sometimes when working with TemplateHaskell, you would like to attach
+some additional meta information to data constructors. For example, I
+came up with this when working on a compiler, where I had a function to
+pretty print expressions with a case for every single expression.</p>
+<p>Writing out a new case for every single constructor in a different
+part of the file was getting quite annoying, so I wanted to use
+TemplateHaskell to make this a bit simpler. If this had been in Rust, I
+could have written the pretty printing information in doc comments like
+this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Expr</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- | pretty: $0</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="ot">=</span> <span class="dt">Var</span> <span class="dt">Name</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- | pretty: λ$0. $1</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Lambda</span> <span class="dt">Name</span> <span class="dt">Expr</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- | pretty: ($0) ($1)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">App</span> <span class="dt">Expr</span> <span class="dt">Expr</span></span></code></pre></div>
+<p>Unfortunately, this doesn’t work in Haskell, since TemplateHaskell
+doesn’t have access to Haddock comments.</p>
+<p>There is another way though!</p>
+<p>Did you know that GADT constructors don’t actually need to return the
+type they are defining?</p>
+<p>For example: in this code, <code>Florb</code> doesn’t actually need
+to return something of type <code>Flurb</code>!</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Flurb</span> <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>     <span class="dt">Florb</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Flurb</span></span></code></pre></div>
+<p>It only needs to return something that <em>unifies</em> with
+<code>Flurb</code>.</p>
+<p>This compiles!</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">DefinitelyNotFlurb</span> <span class="ot">=</span> <span class="dt">Flurb</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Flurb</span> <span class="kw">where</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>     <span class="dt">Florb</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">DefinitelyNotFlurb</span></span></code></pre></div>
+<p>We don’t need to constrain ourselves to simple type aliases like
+this. We can even add a type parameter to our synonym, and
+TemplateHaskell will see the exact type we wrote down, ignored type
+parameters and everything!</p>
+<p>With this, we can finally add prettyprinting annotations to our
+<code>Expr</code> type.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">PrettyAnn</span><span class="ot"> ::</span> <span class="dt">Symbol</span> <span class="ot">-&gt;</span> <span class="dt">Type</span> <span class="ot">-&gt;</span> <span class="dt">Type</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">PrettyAnn</span> s a <span class="ot">=</span> a</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Expr</span> <span class="kw">where</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Var</span><span class="ot">    ::</span> <span class="dt">Name</span> <span class="ot">-&gt;</span> <span class="dt">PrettyAnn</span> <span class="st">&quot;$0&quot;</span> <span class="dt">Expr</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Lambda</span><span class="ot"> ::</span> <span class="dt">Name</span> <span class="ot">-&gt;</span> <span class="dt">Expr</span> <span class="ot">-&gt;</span> <span class="dt">PrettyAnn</span> <span class="st">&quot; λ$0. $1&quot;</span> <span class="dt">Expr</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">App</span><span class="ot">    ::</span> <span class="dt">Expr</span> <span class="ot">-&gt;</span> <span class="dt">Expr</span> <span class="ot">-&gt;</span> <span class="dt">PrettyAnn</span> <span class="st">&quot;($0) ($1)&quot;</span> <span class="dt">Expr</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Eq</span>)</span></code></pre></div>
+<p>Even better: GHC can see that these aren’t real GADTs, so deriving
+clauses still just work.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

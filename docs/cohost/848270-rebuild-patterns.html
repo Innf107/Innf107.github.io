@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Rebuild Patterns</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Rebuild Patterns">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Rebuild Patterns">
+    <meta property="twitter:title" content="Rebuild Patterns">
+    <meta property="twitter:description" content="Rebuild Patterns">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/848270-rebuild-patterns">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Rebuild Patterns</h1>
+        <span class="date">15 January 2023</span>        
+        <p>Or-patterns are awesome, but I often run into situations where I
+cannot use them, so I came up with a solution.</p>
+<p>Or-patterns are very convenient for functions that somehow
+deconstruct values, e.g. finding all literals in an arithmetic
+expression</p>
+<pre><code>data Expr = Literal(Int)
+          | Add(Expr, Expr)
+          | Sub(Expr, Expr) 
+
+let literals(expr) = match expr {
+    Literal(n) -&gt; [n]
+    Add(expr1, expr2) | Sub(expr1, expr2) -&gt;
+         literals(expr1) ++ literals(expr2)
+}</code></pre>
+<p>But it breaks down as soon as a function is meant to rebuild the
+expression, for example a function that sets all literals to 0</p>
+<pre><code>let replaceLiterals(expr) = match expr {
+    Literal(n) -&gt; Literal(0)
+    Add(expr1, expr2) | Sub(expr1, expr2) -&gt;
+        ???(replaceLiterals(expr1), replaceLiterals(expr2))
+}</code></pre>
+<p>The <code>???</code> would need to be <code>Add</code> in one case
+and <code>Sub</code> in the other, but otherwise these should behave
+exactly the same!</p>
+<h2 id="my-solution-rebuild-patterns">My solution: rebuild patterns</h2>
+<pre><code>let replaceLiterals(expr) = match expr {
+    Literal(n) -&gt; Literal(0)
+    Add(expr1, expr2) | Sub(expr1, expr2) rebuild constructor -&gt;
+        constructor(replaceLiterals(expr1), replaceLiterals(expr2))
+}</code></pre>
+<p>Now, patterns of the form
+<code>&lt;pattern&gt; rebuild &lt;name&gt;</code> bind <code>name</code>
+to a function that takes all variables in <code>pattern</code> as
+parameters and rebuilds it from there. In the example above,
+<code>constructor</code> is equivalent to either
+<code>\expr1 expr2 -&gt; Add(expr1, expr2)</code> or
+<code>\expr1 expr2 -&gt; Sub(expr1, expr2)</code>, depending on the
+value of <code>expr</code>.</p>
+<p>This also works for more complicated patterns where not every
+subpattern is a variable pattern, e.g.</p>
+<pre><code>data Expr = ...
+          | If({ condition : Expr, thenBranch : Expr, elseBranch : Expr })
+
+let replaceLeftmostLiteral(expr) = match expr {
+     Literal(n) -&gt; Literal(0)
+     Add(expr, _) | Sub(expr, _) | If({ condition = expr | _ }) rebuild constructor -&gt;
+        constructor(replaceLeftmostLiteral(expr))
+}</code></pre>
+<p>Is there some prior art on something similar to this?</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

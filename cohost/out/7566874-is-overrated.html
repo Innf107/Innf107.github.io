@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>(==) is overrated</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="(==) is overrated">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="(==) is overrated">
+    <meta property="twitter:title" content="(==) is overrated">
+    <meta property="twitter:description" content="(==) is overrated">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/7566874-is-overrated">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">(==) is overrated</h1>
+        <span class="date">06 September 2024</span>        
+        <p>When I first learned Haskell, one of the first habits I picked up was
+adding <code>deriving (Show, Eq)</code> to every type definition I
+write. Eventually I added <code>Generic</code> to this list, but if you
+looked at my code now, you wouldn’t find <code>Eq</code> in there
+anymore.</p>
+<p>To motivate this I’m going to start off with a pretty strong claim:
+<em>deep equality checking is almost never actually what you
+want.</em></p>
+<p>If you ever talked to someone working with dependent types, they
+probably talked your ear off about equality and they probably had a
+point, but that’s not the kind of equality we’re talking about here.
+<code>(==)</code> is not a property you can use in proofs or anything
+like that, it’s just a function that lets you check at runtime if two
+things are equal. Now I want you to ask yourself: how often do you
+actually need this operation on interesting data types?</p>
+<p>Integers? Sure. Strings? Yes, although if you’re doing it a lot you
+should probably intern your strings anyway. But beyond that? There’s
+really not a lot.</p>
+<p>On the flip side, deep equality (the kind <code>deriving Eq</code>
+generates) is <em>linear</em> in the size of your data and a great way
+to kill your performance. I work on compilers a lot and I deliberately
+make sure to never derive <code>Eq</code> on syntax trees because
+checking those for equality is probably the easiest way to create
+quadratic runtime behavior.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

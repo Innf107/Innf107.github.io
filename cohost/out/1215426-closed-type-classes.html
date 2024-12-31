@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Closed Type Classes</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Closed Type Classes">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Closed Type Classes">
+    <meta property="twitter:title" content="Closed Type Classes">
+    <meta property="twitter:description" content="Closed Type Classes">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/1215426-closed-type-classes">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Closed Type Classes</h1>
+        <span class="date">22 March 2023</span>        
+        <p>You know how in Haskell there are functions? These things that
+transform values into other values? Yeah, we have that on the type level
+as well. These are called <em>type families</em>, and they transform
+<em>types</em> into other <em>types</em>.</p>
+<p>The main difference: Type families actually exist in two
+variants!</p>
+<p><em>Closed</em> type families are defined by pattern matching, just
+like regular value-level functions.</p>
+<p><em>Open</em> type families on the other hand are a bit different.
+These are declared without definitions and individual instances can be
+added anywhere the type family is in scope, even across module
+boundaries.</p>
+<p>But the title of this post doesn’t say families, does it? So what
+does this have to do with type classes?</p>
+<p>While type classes are usually seen as defining behavior for classes
+of types, an alternative interpretation is to view them as <em>functions
+from types to values</em>. After all, <code>Show</code> is really just a
+way to go from a type <code>a</code> to a function
+<code>a -&gt; String</code>.</p>
+<p>But type classes in Haskell are always open! We can visualize this as
+a table</p>
+<table>
+<colgroup>
+<col style="width: 34%" />
+<col style="width: 31%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Open</th>
+<th>Closed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Value -&gt; Value</strong></td>
+<td>Open function (not in Haskell)</td>
+<td>Function</td>
+</tr>
+<tr class="even">
+<td><strong>Type -&gt; Type</strong></td>
+<td>Open type family</td>
+<td>Closed type family</td>
+</tr>
+<tr class="odd">
+<td><strong>Type -&gt; Value</strong></td>
+<td>Type class</td>
+<td><strong><span style="color: red">???</span></strong></td>
+</tr>
+</tbody>
+</table>
+<p>There is no fundamental reason why there shouldn’t be anything in
+that <span style="color:red">???</span> corner!</p>
+<p>In fact, closed type classes that are able to pattern match on types
+would avoid quite a few of the drawbacks of globally coherent instances
+and would dramatically simplify <a
+href="https://lexi-lambda.github.io/blog/2021/03/25/an-introduction-to-typeclass-metaprogramming/">Type
+Class Metaprogramming</a>.</p>
+<p>To take an example from that blog post, let’s implement a generalized
+version of <code>concat</code>, that flattens arbitrarily deeply nested
+lists.</p>
+<p>(In Polaris syntax)</p>
+<pre><code>type ElementOf(a) = {
+    List(List(a)) -&gt; ElementOf(List(a))
+    List(a) -&gt; a
+}
+
+class flatten(a) : a -&gt; List(ElementOf(a))
+class flatten = {
+    [[a]] -&gt; \list -&gt; flatten(concat(list))
+    [a] -&gt; \x -&gt; x
+}
+
+print(flatten([[[1, 2], [3]]], [[4]]))
+# [1, 2, 3, 4]</code></pre>
+<p>Note that <code>flatten</code> is lowercase because it directly
+defines a function.</p>
+<p>Compared to the same in Haskell, I think this is pretty nice!</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="kw">family</span> <span class="dt">ElementOf</span> a <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">ElementOf</span> [[a]] <span class="ot">=</span> <span class="dt">ElementOf</span> [a]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">ElementOf</span> [a]   <span class="ot">=</span> a</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Flatten</span> a <span class="kw">where</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="ot">  flatten ::</span> a <span class="ot">-&gt;</span> [<span class="dt">ElementOf</span> a]</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Flatten</span> [a] <span class="kw">where</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  flatten x <span class="ot">=</span> x</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="ot">{-# OVERLAPPING #-}</span> <span class="dt">Flatten</span> [a] <span class="ot">=&gt;</span> <span class="dt">Flatten</span> [[a]] <span class="kw">where</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  flatten x <span class="ot">=</span> flatten (<span class="fu">concat</span> x)</span></code></pre></div>
+<p>On the implementation side, this would be implemented exactly like
+regular type classes. Just the instance selection mechanism would be a
+bit different. <code>flatten</code> would be desugared to something like
+this:</p>
+<pre><code>type FlattenDict(a) = a -&gt;  List(ElementOf(a))
+
+let flattenListList : (FlattenDict(List(a))) -&gt;  (List(List(a)) -&gt; List(a))
+let flattenListList(listADict) = \list -&gt; listADict(concat(list))
+
+let flattenSingleList : List(a) -&gt; List(a)
+let flattenSingleList(x) = x
+
+print(flattenListList(flattenListList(flattenSingleList)))([[[1, 2], [3]]], [[4]]))</code></pre>
+<p>If you have seen something similar before, or if there is anything
+dramatically problematic about this that I missed, please let me know
+:)</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

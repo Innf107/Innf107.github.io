@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Namespaced De Bruijn indices for duplicate record fields</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Namespaced De Bruijn indices for duplicate record fields">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Namespaced De Bruijn indices for duplicate record fields">
+    <meta property="twitter:title" content="Namespaced De Bruijn indices for duplicate record fields">
+    <meta property="twitter:description" content="Namespaced De Bruijn indices for duplicate record fields">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/5873091-namespaced-de-bruijn">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Namespaced De Bruijn indices for duplicate record fields</h1>
+        <span class="date">07 May 2024</span>        
+        <p><a
+href="https://www.haskellforall.com/2021/08/namespaced-de-bruijn-indices.html">Namespaced
+De Bruijn indices</a> are a really neat trick for representing names in
+programming language interpreters that I learned from <span
+class="citation" data-cites="fullmoon">@fullmoon</span>. In short, the
+idea is pretty much that you can access shadowed variables by starting
+at their last occurence and counting up. So for example, in this
+code</p>
+<pre><code>let x = 1
+let y = 2
+let x = 3
+let y = 4
+let x = 5</code></pre>
+<p><code>x</code> (which is equivalent to <code>x@0</code>) is assigned
+5, <code>x@1</code> is 3, <code>x@2</code> is 1, <code>y</code> and
+<code>y@0</code> are 4 and <code>y@1</code> is 2.</p>
+<p>The way Gabby uses this is mostly intended for interpreters that need
+to do capture avoiding substitution. But even in a compiler, these are
+actually quite useful in combination with a feature that might seem
+completely unrelated at first!</p>
+<h2 id="row-polymorphism-with-duplicate-labels">Row polymorphism with
+duplicate labels</h2>
+<p>At this point, row polymorphism isn’t actually that uncommon. It’s a
+way to represent anonymous record types and abstract over the fields of
+a record without needing subtyping (which would make type inference
+difficult and might lose information). For example, a function that
+takes any record that has an <code>x</code> field of type
+<code>Int</code> and a <code>y</code> field of type <code>String</code>
+and that replaces the value of <code>y</code> with something of type
+<code>Bool</code> can look like this. (where <code>r</code> is the row
+that represents the remaining fields)</p>
+<pre><code>let f : forall r. { x : Int, y : String | r } -&gt; { x : Int, y : Bool | r }
+let f(r) = { r with y = r.x &gt; 0 }</code></pre>
+<p>Now, one problem that quickly comes up with row polymorphism is how
+to do record extensions. It would be quite convenient to be able to
+write a function that adds a field to a record like this</p>
+<pre><code>let f : forall r. { | r } -&gt; { x : Int | r }
+let f(r) = { r extend x =  5 }</code></pre>
+<p>This seems innocent enough, but consider what happens if you call
+this function on <code>{ x = "a" }</code>. The record already has an
+<code>x</code> field so you can’t exactly add another, can you? You
+could give up here and make the programmer ensure that <code>f</code> is
+never called on a record that already has an <code>x</code> field, and
+some row polymorphism implementations really do this in practice! (for
+example with qualified types / type class constraints).</p>
+<p>But a much more elegant answer is given in the paper <a
+href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf">Extensible
+records with scoped labels</a> that e.g. Elm and Purescript[^purescript]
+are based on. Its answer to row extensions is: just allow duplicate
+fields! If you apply <code>f</code> to <code>{ x = "a" }</code>, you
+just get <code>{ x = 5, x = "a" }</code>, which has type
+<code>{ x : Int, x : String }</code>. This means that the order of
+fields is not entirely irrelevant anymore, but fortunately the type
+system only needs to preserve the order of fields <em>with the same
+name</em> so it’s barely noticable in practice.</p>
+<p>If you paid attention, you might now be asking “how do I access the
+second <code>x</code> field?”. And the traditional answer to this is:
+you don’t! The row extension has shadowed the inner <code>x</code>, so
+the only way to access it now is to remove the outer field. If your type
+system even supports that (most don’t). Buuut…</p>
+<h2 id="we-can-use-namespaced-de-bruijn-indices">We can use namespaced
+De Bruijn indices!</h2>
+<p>If you want to access the second <code>x</code> field of a record,
+you can just write <code>r.x@1</code>! And if you want to access the,
+say, 27th field, you just write <code>r.x@26</code>! This also works
+seamlessly with polymorphism and type inference. For example, a generic
+function like <code>f(r) = r.x@2</code> would easily be inferred to have
+type
+<code>f : forall r a b c. { x : a, x : b, x : c | r } -&gt; c</code>.</p>
+<p>I think this is pretty cute :) [^purescript]: <del>As far as I know.
+Don’t quote me on this ^^</del> Well, <a
+href="https://cohost.org/monoidmusician/post/5886144-nice-the-main-rea">kind
+of</a></p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

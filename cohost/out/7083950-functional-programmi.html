@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Functional programming languages should be so much better at mutation than they are</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Functional programming languages should be so much better at mutation than they are">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Functional programming languages should be so much better at mutation than they are">
+    <meta property="twitter:title" content="Functional programming languages should be so much better at mutation than they are">
+    <meta property="twitter:description" content="Functional programming languages should be so much better at mutation than they are">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/7083950-functional-programmi">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Functional programming languages should be so much better at mutation than they are</h1>
+        <span class="date">29 July 2024</span>        
+        <p>A lot of people think that functional programming is mostly about
+avoiding mutation at all costs. Even though persistent data structures
+<em>are</em> great and there is definitely some truth to it, this view
+just doesn’t really hold up in reality.</p>
+<p>Many data structures fundamentally require some form of mutation
+(e.g. union find) and even something simple like a persistent sequential
+data structure that allows both fast appends and fast random access is
+orders of magnitude more complicated and still slower than a naive
+dynamic mutable array.</p>
+<p>So really, functional languages need to allow mutation in some way if
+they don’t want nearly every program to suffer from completely
+unnecessary overhead in terms of both time and implementation
+complexity.</p>
+<p>Existing languages have a few options here but I don’t think any of
+these are good enough.</p>
+<h2 id="option-1-give-up">Option 1: Give up</h2>
+<p>This is the most common and obvious option: just allow programmers to
+use mutable data structures like they would in an imperative
+language.</p>
+<p>While this has the advantage of being relatively straight-forward and
+quite flexible, I really don’t think it is the way to go. The
+fundamental problem with this approach is that arguably the main reason
+to use a functional language in the first place is that you
+<em>don’t</em> want to have to watch out for accidental side effects and
+accidental mutation.</p>
+<p>But if your language has unrestricted mutable data structures, the
+desire not to worry about mutation outweighs the benefits of using a
+mutable data structure so they will typically only be used as a last
+resort and mostly in really simple scenarios where it is easy to
+manually verify that no mutation leaks outside some interface boundary.
+(a function, module, etc.)</p>
+<p>For example, let’s say you’re iterating over some structure and
+collecting your results in a sequence. The most efficient data structure
+to use here would be a mutable dynamic array and in an imperative
+language that’s what pretty much everyone would use.</p>
+<p>But if you asked an OCaml programmer, they would almost certainly use
+a linked list instead. This isn’t because they’re stupid or they don’t
+care about performance but because the additional mental overhead of
+worrying about mutation outweighs the benefits of using a more efficient
+data structure.</p>
+<p>And that’s a language failure! A good programming language shouldn’t
+make you write worse code just because it’s too limited to express the
+better alternative nicely.</p>
+<h2 id="option-1.1-give-up-but-only-in-io">Option 1.1: Give up but only
+in IO</h2>
+<p>If your language has some way of tracking side effects, you can give
+programmers full access to mutable data structures but only in a context
+where they can already use unrestricted side effects.</p>
+<p>Regardless of which other option a language chooses, I think having
+<em>some</em> form of unrestricted mutation for those cases where you do
+need the flexibility is important and in my opinion, this is the best
+way to achieve that.</p>
+<p>That said, because using mutation is now reflected in the function’s
+type and infects all call sites, the problems from the previous section
+are massively excacerbated so this option is <em>only</em> suitable as a
+last resort or for programs that already mostly run in IO.</p>
+<h2 id="option-2-locally-sourced-mutation-only">Option 2: Locally
+sourced mutation only</h2>
+<p>One way to make mutation compatible with functional programming is to
+make sure that it is limited in scope and that no mutable state ever
+escapes a region. This is how Haskell’s <a
+href="https://hackage.haskell.org/package/base-4.20.0.1/docs/Control-Monad-ST.html#t:ST">ST</a>
+Monad and Koka’s <a
+href="https://koka-lang.github.io/koka/doc/book.html#sec-runst">st</a>
+effect work. If no mutable state can leak, this means that the mutation
+becomes an implementation detail and from outside the region where
+mutation is allowed, the computation behaves exactly as if it were
+completely pure.</p>
+<p>If you know me, you might know that I really like this approach in
+principle.</p>
+<p>But I almost never use it in practice.</p>
+<p>Part of the reason why might just be the Haskell implementation,
+which employs very little dedicated language support (as opposed to
+something like <a href="https://flix.dev/">Flix</a> that presumably does
+a lot more inference), but in any case, annotating lifetimes is tedious
+enough that if you have something mutable inside a lot of structure,
+it’s often easier to write the module that uses it in IO and make sure
+manually that it doesn’t leak. And if you only need mutation locally
+inside a function, using <code>ST</code> makes your code fundamentally
+more imperative in a way that really forces you to change your
+programming style. This isn’t great either and doesn’t exactly help with
+readability, so the mental overhead is rarely worth it.</p>
+<h2 id="option-3-you-can-only-read-this-section-once">Option 3: You can
+only read this section once</h2>
+<p>Another way to use mutation without compromising on purity is to make
+sure you’re never reusing a value after you have modified it. This is
+called <strong>linearity</strong><a href="#fn1" class="footnote-ref"
+id="fnref1" role="doc-noteref"><sup>1</sup></a>. In this case, there is
+no way to observe whether a data structure is persistent or mutable
+because to find out you would have to look at it after you’ve modified
+it!</p>
+<p>So now all your linear data structures can have APIs that look
+exactly like their persistent counterparts (aside from some linearity
+bookkeping) but internally they will mutate the data structure
+in-place.</p>
+<p>In theory, this sounds amazing and it is probably the best option
+presented here (also currently the least well-supported one in practice)
+but it still has problems.</p>
+<p>One issue is that it’s not always easy to write linear code. For
+example, while needing exclusive access to <em>write</em> to a linear
+data structure is quite natural, you’ll typically want to be able to
+share it for reading. There are nice solutions to this, such as Rust’s
+shared XOR mutable references<a href="#fn2" class="footnote-ref"
+id="fnref2" role="doc-noteref"><sup>2</sup></a> but once you go down
+that path, you add some complexity and lose the ability to write code as
+if your data structures were fully persistent.</p>
+<p>But what’s much more problematic in my opinion is that linearity is
+extremely infectious.</p>
+<p>You can add linearity as an opt-in feature (like in current Haskell)
+such that you only need to worry about it if you need it. Unfortunately,
+this makes it impossible to use <em>any</em> standard functions like
+<code>map</code> on linear values and either makes linearity nearly
+useless or inevitably creates a parallel, incomplete universe of
+functions that also work on linear values.</p>
+<p>Alternatively, you can make linearity the default and give every
+standard function a type that respects linearity. Now linearity works
+great and is really easy to use! However, now everyone needs to worry
+about linearity all the time since e.g. changing a function from using
+an argument linearly to non-linearly is a breaking change. This also
+means that to be compatible with the rest of the ecosystem, every
+polymorphic function needs to be written as if its arguments were
+linear.</p>
+<p>The same problem occurs with tracked effects although I think it’s a
+lot easier to justify there since effects are something you’ll want to
+think about in a functional language anyway.</p>
+<p>If you go down this path you might even run into this issue with
+linearity <em>and</em> effects at the same time.</p>
+<h2 id="option-4-functional-farming">Option 4: Functional farming</h2>
+<p>After the last section, you might have had an idea: if explictly
+tracking linearity is difficult but most programs that would benefit
+from it are effectively linear already, why don’t we implicitly track
+linearity at runtime and just perform a copy if we have more than one
+reference? Well, that’s exactly what Koka’s Functional But In-Place
+(FBIP) and Swift’s Copy-on-Write (CoW) data structures do!</p>
+<p>The advantage of this is that it’s pretty much invisible from the
+surface. This time, your program actually looks exactly as if it were
+just using persistent data structures so you won’t run into any of the
+virality issues you have with linearity. Koka can even infer a lot of
+this for you and perform in-place updates on seemingly immutable data
+structures.</p>
+<p>This might sound a little dangerous since accidentally holding on to
+a reference could turn a linear time algorithm quadratic, but it’s
+actually a lot less problematic than it sounds! If there are two
+references to a data structure and one is modified, it will create its
+own <em>unique</em> copy and let go of the previous one, so any further
+modification to either reference can be performed in-place again.</p>
+<p>Unfortunately, this approach has a different, much more fundamental
+fatal flaw, that makes it unsuitable for most programming languages: It
+relies on reference counting.</p>
+<p>If you want to be able to tell that a data structure is used more
+than once at runtime, you need some way to keep track of references. A
+tracing garbage collector just doesn’t give you this sort of
+information.</p>
+<p>There are some <a
+href="https://www.microsoft.com/en-us/research/uploads/prod/2020/11/perceus-tr-v1.pdf">nice
+efforts into making reference counting more competitive for this kind of
+workload</a> but at least for now even these <a
+href="https://www.reddit.com/r/ProgrammingLanguages/comments/1anyq4j/comment/kpx1t56/">struggle
+to keep up with tracing garbage collectors even when factoring in
+automatic reuse analysis</a>.</p>
+<p>Reference counting might work for some languages, especially ones
+that don’t care much about parallelism, but it’s just not a realistic
+default.</p>
+<h2 id="so-what-do-we-do-about-this">So, what do we do about this?</h2>
+<p>Honestly, I don’t know.</p>
+<p>Linearity is the most promising option out of the ones presented, but
+unless we find an answer to the virality problem, I doubt we will ever
+see it in more than a few semi-popular functional programming
+languages.</p>
+<p>I think there is room for a fundamentally new approach here, I’m just
+not sure what that would look like.</p>
+<p>Alternatively, some way to integrate regions more nicely with regular
+functional programming would probably help a ton.</p>
+<p>A capable solution should also be compatible with existing state
+management solutions. It shouldn’t be easier to use a State monad/effect
+over a persistent data structure than to use a proper mutable data
+structure.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>There is technically a difference between linear types
+that make you use every value <em>exactly</em> once and affine types
+that make you use values <em>at most</em> once (like in rust), but the
+distinction doesn’t really matter for our purposes.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>This slogan has always bothered me a little because it’s
+not <em>actually</em> XOR. you can have values without any references to
+them! It’s actually just “not (shared and mutable)” but I guess that
+doesn’t roll off the tongue as nicely<a href="#fnref2"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

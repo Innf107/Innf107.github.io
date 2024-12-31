@@ -3,7 +3,23 @@ options {
     "--keep-build-artifacts" as keepBuildArtifacts: "Keep the intermediate build artifacts in _build"
     "--watch" as watch: "Rebuild posts if they change on disk"
     "--watch-interval" (watchInterval = "0.25s"): "Interval to check for file modifications. This accepts any format accepted by 'sleep'"
+    "--clean" as clean: "Delete build outputs without actually building anything"
+    "--force-cohost" as forceCohost: "Rebuild cohost posts even if the cohost/out directory exists"
 }
+
+module List = import("@std/list.pls")
+module Async = import("@std/async.pls")
+
+if clean then {
+    !rm "-rf" "docs"
+    !rm "-rf" "cohost/out"
+    exit(0)
+} else {}
+
+# We set the locale explitly to force 'date' to use the correct month names
+let $LC_TIME = "en_US.UTF-8"
+
+chdir(scriptLocal("."))
 
 !bash "-c" "rm -rf docs/*"
 !mkdir "-p" "_build"
@@ -17,15 +33,6 @@ let lookup(needle, assocList) = match assocList {
             Just(value)
         else
             lookup(needle, rest)
-}
-
-let reverse : forall a. List(a) -> List(a)
-let reverse(list) = {
-    let go(acc, list) = match list {
-        [] -> acc
-        (x :: xs) -> go(x :: acc, xs)
-    }
-    go([], list)
 }
 
 let dropLast : forall a. List(a) -> List(a)
@@ -47,9 +54,6 @@ let forever(initial, f) = {
     forever(f(initial), f)
 }
 
-let allAsync : forall a. List(Promise(a)) -> Promise(List(a))
-let allAsync(promises) = async [await promise | let promise <- promises]
-
 let finally : forall a. (() -> (), () -> a) -> a
 let finally(cleanup, cont) = {
     let result = try {
@@ -67,6 +71,13 @@ let finally(cleanup, cont) = {
 let lastModificationTime : String -> Number
 let lastModificationTime(file) = {
     parseInt(!stat "--format=%Y" file)
+}
+
+let doesFileExist : String -> Bool
+let doesFileExist(file) = {
+    try { let _ = !stat file; true } with {
+        CommandFailure(_) -> false
+    }
 }
 
 data FloraSession = String
@@ -128,7 +139,7 @@ exception InvalidFloraEffectArguments(effect : String, arguments : List(String))
     = "Invalid arguments for effect '${effect}': ${toString(arguments)}"
 
 exception InvalidFloraEffect(effect : String, arguments : List(String))
-    = "Invalid flora effect '${effect}' performed with arguments: ${toString(arguments)}"
+    = "Invalid flora effect '${effect}' performed with arguments: ${toString(arguments)}" 
 
 
 let handleEffect : forall r. (FloraSession, FloraEnv, String, List(String), String -> String) -> String
@@ -198,14 +209,14 @@ let processMarkup(session, env, contents) = {
 
         floraReferences := (placeholder, code) :: floraReferences!
 
-        "{{${placeholder}}}"
+        "[[${placeholder}]]"
     } 
 
     let markdown = regexpTransformAll("\\{\\{((?:a|[^a])*?)\\}\\}", processInlineFlora, contents)
 
-    let htmlWithPlaceholders = async { markdown | pandoc }
+    let htmlWithPlaceholders = async { markdown | pandoc "--katex" }
 
-    let floraReferences = reverse(floraReferences!)
+    let floraReferences = List.reverse(floraReferences!)
 
     let evaluatedFloraReferences = [(key, runFlora(session, env, value)) | let (key, value) <- floraReferences ]
 
@@ -217,7 +228,7 @@ let processMarkup(session, env, contents) = {
         _ -> fail("invalid regexp format")
     }
 
-    regexpTransformAll("\\{\\{(\\d+)\\}\\}", replaceFloraReference, await htmlWithPlaceholders)
+    regexpTransformAll("\\[\\[(\\d+)\\]\\]", replaceFloraReference, await htmlWithPlaceholders)
 }
 
 let evalTemplate : (FloraSession, FloraEnv, String) -> String
@@ -326,7 +337,7 @@ let buildRSS(posts) = withFloraSession (\session -> {
 })
 
 let buildPosts(posts) = {
-    let postDetails = allAsync([ async buildPost(post) | let post <- posts ])
+    let postDetails = Async.all([ async buildPost(post) | let post <- posts ])
 
     let _ = async if watch then {
         let timestamps = [(post, lastModificationTime("md/${post}.md")) | let post <- posts]
@@ -360,6 +371,98 @@ let buildPosts(posts) = {
     postDetails
 }
 
+data CohostDetails = {
+    title : String,
+    date : String,
+    localLink : String,
+    fullURL : String
+}
+
+let buildCohostPost : String -> CohostDetails
+let buildCohostPost(file) = withFloraSession (\session -> {
+    print("Building cohost post ${file}")
+    let env = newEnv(session)
+
+    let json = "cohost/posts/${file}/post.json"
+
+
+    let title = !jq "-r" ".headline" json
+    let rawDate = !jq "-r" ".publishedAt" json
+
+    let $LC_TIME = "en_US.UTF-8"
+    let date = !date "--date" rawDate "+%d %B %Y"
+
+    let rawBlocks = dropLast(split("\0", !jq "--raw-output0" ".blocks[]" json))
+
+    let categorize(block) = {
+        match (block | jq "-r" ".type") {
+            "markdown" -> {
+                let content = block | jq "-r" ".markdown.content"
+                Markdown(content)
+            }
+            "ask" -> {
+                let content = block | jq "-r" ".ask.content"
+                Ask(content)
+            }
+            type_ -> fail("unsupported cohost block type: '${type_}'")
+        }
+    }
+
+    let blocks = [categorize(block) | let block <- rawBlocks]
+    
+    let markdown = concatStrings([block ~ "\n\n" | let Markdown(block) <- blocks])
+
+    let renderAsk(content) = {
+        let env = newEnv(session)
+
+        let rendered = content | pandoc
+
+        writeVar(env, "content", rendered)
+        evalTemplate(session, env, "ask.html")
+    }
+
+    let asks = concatStrings([renderAsk(ask) ~ "\n\n" | let Ask(ask) <- blocks])
+
+    let body =  asks ~ (markdown | pandoc)
+
+    let localLink = "/cohost/${file}"
+    let fullURL = "https://welltypedwit.ch${localLink}"
+
+    writeVar(env, "title", title)
+    writeVar(env, "date", date)
+    writeVar(env, "body", body)
+    writeVar(env, "url", "https://welltypedwit.ch/cohost/${file}")
+
+    let html = evalTemplate(session, env, "cohost_post.html")
+
+    writeFile("cohost/out/${file}.html", html)
+
+    CohostDetails({title=title, date=date, localLink=localLink, fullURL=fullURL})
+})
+
+let buildCohost() = withFloraSession(\session -> {
+    !mkdir "-p" "cohost/out"
+    !cp "cohost/maynard.png" "cohost/out/maynard.png"
+    let files = lines(!cat "cohost/posts.txt")
+    let details = await Async.all([async buildCohostPost(file) | let file <- files])
+
+    print("Building the cohost index")
+
+    let renderEntry(details) = {
+        let env = newEnv(session)
+        writeVar(env, "title", details.title)
+        writeVar(env, "date", details.date)
+        writeVar(env, "link", details.localLink)
+        evalTemplate(session, env, "index_entry.html")
+    }
+
+    let env = newEnv(session)
+    let entries = concatStrings([renderEntry(entry!) | let entry <- details])
+    writeVar(env, "entries", entries)
+    let indexFile = evalTemplate(session, env, "cohost_index.html")
+    writeFile("cohost/out/index.html", indexFile)
+})
+
 !mkdir "-p" "docs"
 
 !cp "CNAME" "docs/CNAME"
@@ -368,7 +471,14 @@ let buildPosts(posts) = {
 
 !mkdir "-p" "docs/posts"
 
-let postDetails = buildPosts(reverse([
+let cohost = async {
+    if (forceCohost || not (doesFileExist("cohost/out"))) then {
+        buildCohost()
+    } else {}
+    !cp "-r" "cohost/out" "docs/cohost"
+}
+
+let postDetails = buildPosts(List.reverse([
         "unsafeCoerceDict",
         "coherentIP",
         "insttypes",
@@ -376,10 +486,12 @@ let postDetails = buildPosts(reverse([
         "newtypes",
     ]))
 
-let _ = await allAsync([
+let _ = await Async.all([
         async buildIndex(await postDetails),
         async buildRSS(await postDetails),
     ])
+
+let _ = await cohost
 
 if not (keepBuildArtifacts || watch) then {
     !rm "-rf" "_build"

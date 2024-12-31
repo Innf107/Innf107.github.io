@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Trees that Grow</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Trees that Grow">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Trees that Grow">
+    <meta property="twitter:title" content="Trees that Grow">
+    <meta property="twitter:description" content="Trees that Grow">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/3011874-trees-that-grow">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Trees that Grow</h1>
+        <span class="date">29 September 2023</span>        
+        <p><a
+href="https://www.microsoft.com/en-us/research/uploads/prod/2016/11/trees-that-grow.pdf">Trees
+that Grow</a> is one of my favorite programming patterns for compilers,
+but I don’t think the paper does a great job of explaining it.</p>
+<p>The core idea is pretty simple: many passes in a compiler will want
+to modify or extend the syntax tree in some way. For example, just after
+parsing, you’ll probably represent all variables with strings, but in
+the renamer you’ll want to replace them with a more efficient name
+representation. Similarly, you’ll probably want to extend many
+expressions with their types after type checking if you need those for
+codegen or a language server and if you’re lowering to something like
+GHC Core, you’ll probably want to extend your syntax tree with explicit
+type abstractions / applications. Even removing constructors from your
+AST is reasonable if you desugar some constructor from an earlier stage
+into other language concepts.</p>
+<h2 id="so-how-do-you-do-this-in-haskell">So how do you do this in
+Haskell?</h2>
+<p>Let’s say you start of with a syntax tree that looks something like
+this</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Expr</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(233, 228, 169);">Text</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Lambda</span> <span style="color: rgb(233, 228, 169);">Text</span> <span style="color: rgb(233, 228, 169);">Expr</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">App</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(233, 228, 169);">Expr</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Literal</span> <span style="color: rgb(233, 228, 169);">Integer</span></code></pre>
+<h3
+id="step-1-parameterize-your-ast-over-the-compiler-pass-it-came-from">Step
+1: Parameterize your AST over the compiler pass it came from</h3>
+<p>I like to use a data kind here, but you could use separate types.
+Doing so makes things a little less clear but might allow external code
+like compiler plugins to add its own passes</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Pass</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Parsed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Typed</span>
+
+<span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(233, 228, 169);">Text</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Lambda</span> <span style="color: rgb(233, 228, 169);">Text</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">App</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Literal</span> <span style="color: rgb(233, 228, 169);">Integer</span></code></pre>
+<h3
+id="step-2-replace-all-varying-types-in-your-ast-with-type-families-parameterized-over-the-pass">Step
+2: Replace all varying types in your AST with type families
+parameterized over the pass</h3>
+<p>In our case, the names might vary between passes, so we will replace
+them with a type family <code>XName</code><a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Pass</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Parsed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Typed</span>
+
+<span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Lambda</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">App</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Literal</span> <span style="color: rgb(233, 228, 169);">Integer</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Text</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span></code></pre>
+<p>If you used separate types rather than a data kind, you would need to
+use an <em>open</em> type family here.</p>
+<h3 id="step-3-add-extension-fields-to-existing-constructors.">Step 3:
+Add extension fields to existing constructors.</h3>
+<p>The paper recommends adding an extension field to <em>every</em>
+constructor, but I prefer only doing so on demand when necessary. This
+might break code more often, so if your project is GHC-sized your
+mileage may vary, but I’ve found it to be much less hassle in
+practice.</p>
+<p>The actual extension field is once again given by a type family. To
+specify that an extension should not be used, you can set the extension
+field to <code>()</code> and to disable a constructor completely, you
+can just set it to <code>Void</code> (the uninhabited type).</p>
+<p>In our example, we extend variables with their types after typing and
+let’s say the renamer desugars literals to church encoded numbers so we
+can get rid of the <code>Literal</code> constructor afterwards.</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Pass</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Parsed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Typed</span>
+
+<span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XVar</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Lambda</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">App</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Literal</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XLiteral</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(233, 228, 169);">Integer</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Text</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Type</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span></code></pre>
+<h3 id="step-4-add-an-extension-constructor">Step 4: Add an extension
+<em>constructor</em></h3>
+<p>This is what allows us to add additional constructors to the AST.
+Unlike extension <em>fields</em>, this one shouldn’t exist at all when
+it’s unused so we’re just going to set it to <code>Void</code> in that
+case.</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Pass</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Parsed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Typed</span>
+
+<span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XVar</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Lambda</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">App</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Literal</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XLiteral</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(233, 228, 169);">Integer</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">ExprX</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XExpr</span> <span>p</span><span style="color: rgb(49, 165, 133);">)</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Text</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span>
+    <span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">MuchBetterName</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XVar</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Type</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span>
+
+<span style="color: rgb(205, 203, 81);">type</span> <span>family</span> <span style="color: rgb(233, 228, 169);">XExpr</span> <span style="color: rgb(49, 165, 133);">(</span><span>p</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Pass</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(205, 203, 81);">where</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Parsed</span>  <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">Void</span>
+    <span style="color: rgb(233, 228, 169);">XLiteral</span> <span style="color: rgb(233, 228, 169);">Typed</span>   <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">TypedExprExt</span>
+
+<span style="color: rgb(205, 203, 81);">data</span> <span style="color: rgb(233, 228, 169);">TypedExprExt</span>
+    <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">TypeLambda</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span style="color: rgb(233, 228, 169);">Typed</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(233, 228, 169);">Typed</span><span style="color: rgb(49, 165, 133);">)</span>
+    <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">TypeApp</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Expr</span> <span style="color: rgb(233, 228, 169);">Typed</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(233, 228, 169);">Type</span></code></pre>
+<h3 id="step-5-profit">Step 5: Profit</h3>
+<p>With a tiny syntax tree like this, Trees That Grow might seem like a
+lot of effort for little gain, but in practice it’s really not. In a
+typical compiler, most constructors will not change between passes so
+the number of extension families really isn’t that large compared to the
+size of the tree that would need to be duplicated without them.</p>
+<p>Also, doing this allows us to write functions that are polymorphic in
+the compiler pass. It’s even possible to write functions over only a
+subset of valid expression types (e.g. ones that use
+<code>MuchBetterName</code> for names) by using an equality constraint.
+For example:</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span>f</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">XName</span> <span>p</span> <span style="color: rgb(49, 165, 133);">~</span> <span style="color: rgb(233, 228, 169);">MuchMoreEfficientName</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">=&gt;</span> <span style="color: rgb(233, 228, 169);">Expr</span> <span>p</span> <span style="color: rgb(49, 165, 133);">-&gt;</span> <span style="color: rgb(49, 165, 133);">...</span></code></pre>
+<h2 id="how-would-you-do-this-in-ocaml">How would you do this in
+OCaml?</h2>
+<p>You… wouldn’t. Seriousy, I’ve tried. It’s not pretty. Your first
+instinct might be that this would be a great use of functors and you
+wouldn’t be alone<a href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>. But it’s not. The issue is mutual
+recursion. Say you want to annotate every variable with its type. If you
+tried to do this with modules, your attempt would probably look
+something like this</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">module</span> <span style="color: rgb(233, 228, 169);">AST</span><span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">Ext</span> <span style="color: rgb(49, 165, 133);">:</span> <span>sig</span> 
+    <span style="color: rgb(205, 203, 81);">type</span> <span>var_ext</span>
+<span>end</span><span style="color: rgb(49, 165, 133);">)</span> <span style="color: rgb(49, 165, 133);">=</span> <span>struct</span> 
+    <span style="color: rgb(205, 203, 81);">type</span> <span>expr</span> <span style="color: rgb(49, 165, 133);">=</span>
+        <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(49, 165, 133);">...</span>
+        <span style="color: rgb(49, 165, 133);">|</span> <span style="color: rgb(233, 228, 169);">Var</span> <span style="color: rgb(205, 203, 81);">of</span> <span>var_ext</span> <span style="color: rgb(49, 165, 133);">*</span> <span>name</span>
+
+    <span style="color: rgb(205, 203, 81);">type</span> <span>type_</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">...</span>
+<span>end</span>
+
+<span style="color: rgb(205, 203, 81);">module</span> <span style="color: rgb(233, 228, 169);">Parsed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">AST</span><span style="color: rgb(49, 165, 133);">(</span><span>struct</span> <span style="color: rgb(205, 203, 81);">type</span> <span>var_ext</span> <span style="color: rgb(49, 165, 133);">=</span> <span>unit</span> <span>end</span><span style="color: rgb(49, 165, 133);">)</span>
+<span style="color: rgb(205, 203, 81);">module</span> <span style="color: rgb(233, 228, 169);">Renamed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">AST</span><span style="color: rgb(49, 165, 133);">(</span><span>struct</span> <span style="color: rgb(205, 203, 81);">type</span> <span>var_ext</span> <span style="color: rgb(49, 165, 133);">=</span> <span>unit</span> <span>end</span><span style="color: rgb(49, 165, 133);">)</span>
+<span style="color: rgb(205, 203, 81);">module</span> <span style="color: rgb(233, 228, 169);">Typed</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(233, 228, 169);">AST</span><span style="color: rgb(49, 165, 133);">(</span><span>struct</span> <span style="color: rgb(205, 203, 81);">type</span> <span>var_ext</span> <span style="color: rgb(49, 165, 133);">=</span> <span>Typed<span style="color: rgb(49, 165, 133);">.</span>type_</span> <span>end</span><span style="color: rgb(49, 165, 133);">)</span></code></pre>
+<p>Except that doesn’t work, because modules don’t let you tie the knot
+like that and include a module in the argument to the functor
+application of its own definition. Mutually recursive modules can get
+close, but those don’t work without explicit module types so they’re not
+an option either if you want to avoid duplicating the syntax tree for
+every single pass.</p>
+<p>Trying to get clever with explicit staging might even work for this
+example, but will break donw once you try to include an expression in an
+extension field for an expression.</p>
+<p>In Polaris, I used a (pretty cursed) PPX rewriter that syntactically
+inlines a functor application to allow extension fields to reference
+other types defined in the same pass.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The <code>X</code> stands for “extension” but if you
+want to read it as “EXTREME” that’s also fine.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>I <em>almost</em> wrote a blog post about this approach
+once. That would have been very embarassing in retrospect…<a
+href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

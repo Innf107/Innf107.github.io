@@ -1,0 +1,50 @@
+.ask-box {
+    padding: 2px;
+    background: linear-gradient(to right, var(--primary-start), var(--primary-end));
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 5px;
+}
+
+.ask-box .content {
+    grid-column-start: 2;
+}
+
+.ask-box .content p:first-child {
+    margin-top: 0;
+}
+.ask-box .content p:last-child {
+    margin-bottom: 0;
+}
+
+.ask-box .asker {
+    color: gray;
+}
+.ask-box .asker a {
+    color: gray;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+
+.ask-wrapper {
+    border-radius: 5px;
+    background-color: rgb(24, 24, 24);
+    padding: 1rem;
+
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    row-gap: 0.5rem;
+    column-gap: 0.75rem;
+}
+
+img.pfp {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 12.5%;
+}
+
+footer {
+    text-align: center;
+}

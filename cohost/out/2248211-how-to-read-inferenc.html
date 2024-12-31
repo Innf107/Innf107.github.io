@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>How to read inference rules</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="How to read inference rules">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="How to read inference rules">
+    <meta property="twitter:title" content="How to read inference rules">
+    <meta property="twitter:description" content="How to read inference rules">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/2248211-how-to-read-inferenc">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">How to read inference rules</h1>
+        <span class="date">28 July 2023</span>        
+        <p>The notation used is probably one of the largest barriers of entry to
+type inference papers, but it is rarely explained explicitly, so… I’m
+going to do just that!</p>
+<p>For starters, inference rules are really nothing more than
+implications. The inference rule</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mi>A</mi><mi>B</mi></mfrac><mo stretchy="false">(</mo><mtext>Name</mtext><mo stretchy="false">)</mo></mrow></semantics></math></span></p>
+<p>really just means “if A then B”. These are usually given a name (in
+this case, creatively,
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>Name</mtext></mrow></semantics></math></span>)
+to make it easier to refer to them in the rest of the paper.</p>
+<p>Now, even though these are technically just implications, it’s
+usually not a great idea to read them from top to bottom. Inference
+rules denote relations, but it usually usually makes more sense to read
+them as (possibly non-deterministic) functions. For example, a judgement
+for typing function application might look like this. (where
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><mi>e</mi><mo>:</mo><mi>τ</mi></mrow></semantics></math></span>
+means “In a context
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>,
+the type of an expression
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi></mrow></semantics></math></span>
+is infered to
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi></mrow></semantics></math></span>”)</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><msub><mi>e</mi><mn>1</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub><mo>→</mo><msub><mi>τ</mi><mn>2</mn></msub>      <mi mathvariant="normal">Γ</mi><mo>⊢</mo><msub><mi>e</mi><mn>2</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub></mrow><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><msub><mi>e</mi><mn>1</mn></msub><mo stretchy="false">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false">)</mo>  <mo>:</mo>  <msub><mi>τ</mi><mn>2</mn></msub></mrow></mfrac><mo stretchy="false">(</mo><mtext>App</mtext><mo stretchy="false">)</mo></mrow></semantics></math></span></p>
+Naively, one might read this as
+<blockquote>
+If
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub></mrow></semantics></math></span>
+has type
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>1</mn></msub><mo>→</mo><msub><mi>τ</mi><mn>2</mn></msub></mrow></semantics></math></span>
+in a context
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>
+and
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>2</mn></msub></mrow></semantics></math></span>
+has type
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>1</mn></msub></mrow></semantics></math></span>
+in
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>,
+then
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub><mo stretchy="false">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false">)</mo></mrow></semantics></math></span>
+has type
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>2</mn></msub></mrow></semantics></math></span>
+in
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>
+</blockquote>
+but a much better way to read it, that is much closer to an actual
+implementation, would be
+<blockquote>
+In order to infer a type for
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub><mo stretchy="false">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false">)</mo></mrow></semantics></math></span>
+in a context
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>,
+one first needs to infer a type for
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub></mrow></semantics></math></span>
+with shape
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>1</mn></msub><mo>→</mo><msub><mi>τ</mi><mn>2</mn></msub></mrow></semantics></math></span>
+in
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>.
+Now
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>2</mn></msub></mrow></semantics></math></span>
+also needs to infer to type
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>1</mn></msub></mrow></semantics></math></span>
+in
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>,
+so that the result (i.e. the type of
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub><mo stretchy="false">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false">)</mo></mrow></semantics></math></span>)
+is
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>2</mn></msub></mrow></semantics></math></span>.
+</blockquote>
+<p>Read this way, the inference rule maps very closely onto an actual
+implementation! Seriously, compare the corresponding pseudocode to that
+second description</p>
+<pre>infer Γ (App e1 e2) =
+    let (τ1 -&gt; τ2) = infer Γ e1
+    let τ3 = infer Γ e2
+    unify τ1 τ3
+    return τ2
+</pre>
+<p>The only major difference between this code (which skips error
+handling, just like inference rules) and the inference rule is that the
+fact that the type of
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>2</mn></msub></mrow></semantics></math></span>
+needs to be equal to
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mn>1</mn></msub></mrow></semantics></math></span>
+is explicit in the code (<code>unify τ1 τ3</code>).</p>
+<p>Reading off the algorithm like this is possible if the inference
+rules are syntax directed, i.e. if there is only ever a single rule that
+might match on a given expression. This is not always the case, so
+sometimes it’s better to imagine non-deterministically choosing the
+correct rule to apply, rather than just pattern matching.</p>
+<p>And that’s… pretty much all you need to know to read inference
+rules!</p>
+<p>There are a few common conventions in type systems that might be a
+bit surprising, so let’s go over those as well</p>
+<h2 id="environments-and-extension">Environments and extension</h2>
+<p>Type inference needs an environment to keep track of the types of
+variables. This is usually called
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>
+and extended as
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi><mo separator="true">,</mo><mi>x</mi>  <mo>:</mo>  <mi>τ</mi></mrow></semantics></math></span>.</p>
+<p>For example, this inference rule for (annotated) let bindings checks
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>2</mn></msub></mrow></semantics></math></span>
+under the environment Γ, extended with the binding
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub></mrow></semantics></math></span>.</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><msub><mi>e</mi><mn>1</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub>      <mi mathvariant="normal">Γ</mi><mo separator="true">,</mo><mi>x</mi>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub><mo>⊢</mo><msub><mi>e</mi><mn>2</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>2</mn></msub></mrow><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><mrow><mtext mathvariant="bold">let</mtext><mtext> </mtext></mrow><mi>x</mi>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub><mo>=</mo><msub><mi>e</mi><mn>1</mn></msub><mrow><mtext> </mtext><mtext mathvariant="bold">in</mtext><mtext> </mtext></mrow><msub><mi>e</mi><mn>2</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>2</mn></msub></mrow></mfrac><mtext>Let</mtext></mrow></semantics></math></span></p>
+<p>Extracting information from the environment is achieved through
+“pattern matching” on the environment, for example in this inference
+rule for variables.</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow></mrow><mrow><mi mathvariant="normal">Γ</mi><mo separator="true">,</mo><mi>x</mi>  <mo>:</mo>  <mi>τ</mi><mo>⊢</mo><mi>x</mi>  <mo>:</mo>  <mi>τ</mi></mrow></mfrac><mtext>Var</mtext></mrow></semantics></math></span></p>
+<h2 id="unification-variables">Unification variables</h2>
+<p><a
+href="https://cohost.org/prophet/post/2220730-if-there-is-one-piec">Unification
+variables</a> don’t exist in theoretical type systems, but they still
+map very directly onto a similar concept. Instead of generating a fresh
+unification variable, inference rules just “guess” a new type (they’re
+relations, remember?).</p>
+<p>For example, this typing rule for (unannotated) lambdas just pulls
+the type
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi></mrow></semantics></math></span>
+out of thin air.</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mi mathvariant="normal">Γ</mi><mo separator="true">,</mo><mi>x</mi>  <mo>:</mo>  <mi>τ</mi><mo>⊢</mo><mi>e</mi>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub></mrow><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><mi>λ</mi><mi>x</mi><mo>→</mo><mi>e</mi>  <mo>:</mo>  <mi>τ</mi><mo>→</mo><msub><mi>τ</mi><mn>1</mn></msub></mrow></mfrac><mtext>Lambda</mtext></mrow></semantics></math></span></p>
+<h2 id="lists">Lists</h2>
+<p>Something you will see pretty often in papers by Simon Peyton Jones
+are lists that are represented by an overline. E.g. the syntax for
+uncurried function application might be
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mn>1</mn></msub><mo stretchy="false">(</mo><mover accent="true"><mi>e</mi><mo stretchy="true">‾</mo></mover><mo stretchy="false">)</mo></mrow></semantics></math></span>,
+where
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover accent="true"><mi>e</mi><mo stretchy="true">‾</mo></mover></mrow></semantics></math></span>
+consists of 0 or more expressions.</p>
+<h2 id="skolems">Skolems</h2>
+<p>Similarly, skolems don’t exist as a separate concept. Instead,
+“unbound” type variables are treated as skolems, although these
+obviously cannot conflict with any other type variables in scope! In an
+implementation, this would be achieved by generating a fresh skolem, but
+in inference rules, this is expressed by the side condition that the
+type variable should not occur “free in the environment”, written
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo mathvariant="normal">∉</mo><mtext>ftv</mtext><mo stretchy="false">(</mo><mi mathvariant="normal">Γ</mi><mo stretchy="false">)</mo></mrow></semantics></math></span>,
+where ftv denotes the set of free type variables (= skolems) in
+<span><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Γ</mi></mrow></semantics></math></span>.</p>
+<p>For example, a rule for let bindings with polymorphic types (that
+need to be skolemized) might look like this</p>
+<p><span><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><msub><mi>e</mi><mn>1</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>1</mn></msub>      <mover accent="true"><mi>a</mi><mo stretchy="true">‾</mo></mover><mo mathvariant="normal">∉</mo><mtext>ftv</mtext><mo stretchy="false">(</mo><mi mathvariant="normal">Γ</mi><mo stretchy="false">)</mo>      <mi mathvariant="normal">Γ</mi><mo separator="true">,</mo><mi>x</mi>  <mo>:</mo>  <mi mathvariant="normal">∀</mi><mover accent="true"><mi>a</mi><mo stretchy="true">‾</mo></mover><mi mathvariant="normal">.</mi><msub><mi>τ</mi><mn>1</mn></msub><mo>⊢</mo><msub><mi>e</mi><mn>2</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>2</mn></msub></mrow><mrow><mi mathvariant="normal">Γ</mi><mo>⊢</mo><mrow><mtext mathvariant="bold">let</mtext><mtext> </mtext></mrow><mi>x</mi>  <mo>:</mo>  <mi mathvariant="normal">∀</mi><mover accent="true"><mi>a</mi><mo stretchy="true">‾</mo></mover><mi mathvariant="normal">.</mi><msub><mi>τ</mi><mn>1</mn></msub><mo>=</mo><msub><mi>e</mi><mn>1</mn></msub><mrow><mtext> </mtext><mtext mathvariant="bold">in</mtext><mtext> </mtext></mrow><msub><mi>e</mi><mn>2</mn></msub>  <mo>:</mo>  <msub><mi>τ</mi><mn>2</mn></msub></mrow></mfrac></mrow></semantics></math></span></p>
+<h2 id="where-to-go-from-here">Where to go from here</h2>
+<p>Great, with a little practice, you should be able to read inference
+rules now! I would recommend you read <a
+href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf">Practical
+type inference for higher rank types</a>, which is a great, relatively
+beginner friendly paper about type inference that even contains a full
+implementation at the end! (And despite the name, is not just about
+higher rank types).</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

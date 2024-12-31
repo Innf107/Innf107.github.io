@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>The Vega Programming Language</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="The Vega Programming Language">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="The Vega Programming Language">
+    <meta property="twitter:title" content="The Vega Programming Language">
+    <meta property="twitter:description" content="The Vega Programming Language">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/3009384-the-vega-programming">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">The Vega Programming Language</h1>
+        <span class="date">29 September 2023</span>        
+        <p>Since announcing projects before having anything to show for them is
+apparently en vogue now, I guess I’ll join in and announce that I’m
+building another programming language! Yeah yeah I know, working on two
+languages at the same time is a ton of effort, but this is <em>my</em>
+project so <em>I</em>’m the one who gets to decide what’s a bad idea
+:)</p>
+<p>Unlike Polaris, which is relatively specialized to shell-like
+freestanding scripts, the goal for Vega is to be the ideal general
+purpose programming language I would want to use. As such, it’s going to
+be somewhat similar to Haskell, my favorite existing language, but with
+some significant differences. Some of the notable features I’m going for
+are - (hopefully lightweight) dependent types - good type inference -
+direct-style row-polymorphic algebraic effects - globally coherent type
+classes (like Haskell’s and Polaris’ but unlike Coq’s) - linearity -
+good C FFI - first class implicit existential types - anonymous
+row-polymorphic records and maybe polymorphic variants</p>
+<p>A cool consequence of dependent types is that they give you ML-style
+modules pretty much for free since a module can just be represented as a
+record of values and types (like modules in Dhall or Lua) and a functor
+is just a function that transforms modules.</p>
+<p>As for the runtime system, I’ll probably do something similar to
+OCaml 5 with segmented stacks for extremely efficient one-shot effects.
+Thanks to linearity, a handler could then specify whether it uses its
+continuation linearly or not and only take the slow route (that involves
+copying stack frames) in the non-linear case. Linearity also helps model
+resource acquisition without the need for stack unwinding or anything
+like that (since linear resources cannot be passed across calls to
+functions with non-linear effects)</p>
+<p>But for now, I’ve only got a half-written dependent type checker with
+decent inference working.</p>
+<p>It’s written in Haskell this time, which is quite nice after mostly
+working in OCaml for Polaris. OCaml is fun and all, but wow, there are a
+few things I’ve missed so much: - type classes - super simple
+metaprogramming through GHC.Generics - Trees that Grow that aren’t
+terrible - order independent declarations and easy mutual recursion -
+the ability to use data structures other than lists and mutable arrays
+without massively sacrificing ergonomics.</p>
+<p>I would like to self-host Vega at some point, so it’s quite nice that
+these are all features I’ve got planned for it anyway. Especially Trees
+that Grow should be very natural with dependent types.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

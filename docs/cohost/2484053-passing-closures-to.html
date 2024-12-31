@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Passing closures to programs</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Passing closures to programs">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Passing closures to programs">
+    <meta property="twitter:title" content="Passing closures to programs">
+    <meta property="twitter:description" content="Passing closures to programs">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/2484053-passing-closures-to">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Passing closures to programs</h1>
+        <span class="date">15 August 2023</span>        
+        <p>One of the key features of Polaris is that it supports calling other
+programs as a language construct rather than a function (like Bash, but
+unlike, say, <code>os.system</code> in Python). This sounds like it
+wouldn’t make much of a difference beyond ergonomics, but it actually
+gives the interpreter the freedom to do a few things that would be
+impossible to do from inside the language. This is one of those!</p>
+<p>Some CLI programs accept programs as callbacks that they will run at
+some point. E.g. <code>watch</code>, <code>entr</code>. Using these in a
+bash script means writing the callback to a separate file and passing
+the name of that file —­ not too painful, but you’re already using bash
+so the bar is pretty low.</p>
+<p>Polaris on the other hand supports, you know, <em>actual
+functions</em>. So wouldn’t it be nice if we could just pass one of
+those to a program call? Imagine the possibilities if we could write
+programs like this</p>
+<pre><code>let counter = ref 0
+
+!watch (\_ -&gt; {
+    print(counter!)
+    counter := counter! + 1
+    0
+})</code></pre>
+<h2 id="how-on-earth-are-you-going-to-implement-this">How on earth are
+you going to implement this?</h2>
+<p>Great question! Here is where it gets fun.</p>
+<p>Every time we pass a function to a program call, the interpreter
+<em>actually</em> creates a shell script in a new temporary directory
+and passes its path to the program call. This shell script then
+communicates with the main polaris process through <a
+href="https://man7.org/linux/man-pages/man3/mkfifo.3.html">named pipe
+files</a>, sending stdin and receiving stdout. There, the polaris
+runtime creates a new async task that evaluates the closure with the
+correct stdin and stdout.</p>
+<p>Importantly, this will <em>not</em> work with programs that somehow
+modify the execution context such as <code>chroot</code> or
+<code>env</code>. Maybe it should though? It might be possible to run
+every IO operation in the child script.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

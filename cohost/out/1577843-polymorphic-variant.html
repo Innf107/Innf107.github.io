@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Polymorphic variant inference that beats OCaml</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Polymorphic variant inference that beats OCaml">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Polymorphic variant inference that beats OCaml">
+    <meta property="twitter:title" content="Polymorphic variant inference that beats OCaml">
+    <meta property="twitter:description" content="Polymorphic variant inference that beats OCaml">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/1577843-polymorphic-variant">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Polymorphic variant inference that beats OCaml</h1>
+        <span class="date">29 May 2023</span>        
+        <p>You may remember that a few months ago, I spent <a
+href="https://cohost.org/prophet/post/802188-i-did-not-expect-to">quite
+some time implementing type inference for polymorphic variant
+patterns</a> in Polaris. In that post, I settled on roughly the same
+approach as OCaml. As it turns out, we can do much better!</p>
+<h2 id="a-quick-recap">A quick recap</h2>
+<p>The issue with inference for these kinds of patterns is that
+sometimes, polymorphic variant patterns should be inferred to a closed
+variant type and sometimes to an open type</p>
+<pre><code># This should have type f : &lt; A, B &gt; -&gt; Bool
+let f(x) = match x {
+    A -&gt; true
+    B -&gt; false
+}
+
+# This should have type g : forall r. &lt; A, B | r &gt; -&gt; Bool
+let g(x) = match x {
+    A -&gt; true
+    B -&gt; false
+    _ -&gt; false
+}</code></pre>
+<p>The solution taken by both Polaris and OCaml is to always infer an
+open variant type and then later check the patterns for exhaustiveness
+and close the type when appropriate (by setting the row variable to the
+empty variant <code>&lt;&gt;</code>).</p>
+<h2 id="this-is-not-enough">This is not enough</h2>
+<p>Consider this function (This may seem a bit artificial, but I ran
+into something similar in a real Polaris script!)</p>
+<pre><code>let f(x) = match x {
+    A -&gt; B
+    y -&gt; y
+}</code></pre>
+<p>What is the type of <code>y</code>? Both OCaml and current Polaris
+will infer <code>&lt; A, B | ?r &gt;</code>, and therefore infer the
+full type
+<code>f : forall r. &lt; A, B | r &gt; -&gt; &lt; A, B | r &gt;</code>.
+But if you look closely, you will notice that this is not actually
+correct! <code>y</code> can <em>never</em> be <code>A</code>, because in
+that case, the pattern above it will match.</p>
+<p>It gets a bit more complicated still. If we change the function
+slightly,</p>
+<pre><code>let f(x) = match x {
+    (A, 5) -&gt; B
+    (y, _) -&gt; y
+}</code></pre>
+<p>the first pattern may not match, even if the first component is
+<code>A</code>, so <code>y</code> <em>can</em> be <code>A</code>
+now!</p>
+<p>Fortunately, there is a relatively simple rule to figure out when to
+refine variants. We know that all further patterns cannot contain a
+variant, whenever a pattern is <strong>otherwise irrefutable</strong>
+(i.e. will always match). For example, <code>((A, x), _)</code> is
+irrefutable apart from the variant pattern <code>A</code>, but
+<code>(A, 5)</code> is not, because <code>5</code> is not
+irrefutable.</p>
+<p>We can then infer the correct type for the function above
+(<code>forall r. &lt; A, B | r &gt; -&gt; &lt; B | r &gt;</code>), by
+<em>refining</em> the variant for the remaining patterns.</p>
+<h2 id="but-how-do-you-implement-refinement">But how do you implement
+refinement?</h2>
+<p>This is a little harder for Polaris than it would be for OCaml, since
+Polaris’ type system is constraint based. This means we usually cannot
+match on types directly during type inference as they may still contain
+unification variables that will later be substituted by the constraint
+solver.</p>
+<p>Right now, match expressions are inferred like this:</p>
+<ul>
+<li>Type inference infers the type of the scrutinee (<code>x</code> in
+the example above. In the difficult case, this is just a unification
+variable)</li>
+<li>All patterns are independently checked against this type</li>
+<li>The body of each case is inferred and the types are all unified. The
+resulting type is the type of the result of the match expression</li>
+</ul>
+<p>To refine variant types, we need to take a slightly different
+approach:</p>
+<ul>
+<li>We still infer the type of the scrutinee and use this as the working
+type</li>
+<li>Patterns are checked <em>in order</em> from top to bottom.</li>
+<li>After checking one pattern, we see if the pattern is irrefutable
+apart from a single variant pattern. If it is, we remember that variant
+constructor, as well as a <em>path</em> to it in the full type.</li>
+<li>Accordingly, we emit a constraint
+<code>RefineVariant (original_type, path, variant, refined_type)</code>,
+where <code>original_type</code> is the type we matched the pattern
+against and <code>refined_type</code> is a fresh unification
+variable.</li>
+<li>When encountering one of these constraints, the constraint solver
+will traverse the path in the type (which is now fully constructed),
+remove the desired variant and bind the resulting type to
+<code>refined_type</code>.</li>
+<li>We continue by recursing on the other patterns, except that this
+time, we check them against <code>refined_type</code>.</li>
+<li>Inference for the case bodies remains unchanged.</li>
+</ul>
+<p>And that’s it! For only a bit more effort, this should infer
+polymorphic variants much more precisely than OCaml!</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

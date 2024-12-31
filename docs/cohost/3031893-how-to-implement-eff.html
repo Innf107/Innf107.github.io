@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>How to implement effect handlers</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="How to implement effect handlers">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="How to implement effect handlers">
+    <meta property="twitter:title" content="How to implement effect handlers">
+    <meta property="twitter:description" content="How to implement effect handlers">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/3031893-how-to-implement-eff">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">How to implement effect handlers</h1>
+        <span class="date">02 October 2023</span>        
+        <div class="ask-box">
+    <div class="ask-wrapper">
+        <img class="pfp"
+            src="/cohost/maynard.png">
+        <span class="asker"><a href="https://bsky.app/profile/quelklef.bsky.social">@Quelklef</a> asked:</span>
+        <div class="content">
+            <p>polaris has algebraic effects, right? how did you implement them?</p>
+<p>i know they can be done with free monads but i have a hunch that
+that’s not the route you opted to take</p>
+        </div>
+    </div>
+</div>
+
+<p>It doesn’t, actually ^^ I’ve thought about implementing them, but
+fine grained effects just aren’t very useful for the kinds of scripts
+you might want to write in Polaris and the extra type level complexity
+gets in the way too much.</p>
+<p>Buut, Vega will have algebraic effects! I’ve also implemented them
+for a different language before so I have a pretty good idea of how
+they’re going to work.</p>
+<p>So, implementing effects on top of free monads is technically
+possible, but it’s honestly a pretty terrible idea. I’m not a massive
+fan of free monads in general, but building up and later traversing a
+heap allocated tree for <em>every</em> effectful expression is pretty
+ridiculous.</p>
+<p>The standard implementation approaches are much more similar to, or
+even based on delimited continuations<a href="#fn1" class="footnote-ref"
+id="fnref1" role="doc-noteref"><sup>1</sup></a>. The key insight here is
+that a continuation is really not much more than a call stack and a
+<em>delimited</em> continuation (up until an effect handler) is just a
+delimited part of the call stack. Therefore, capturing a continuation
+just involves copying parts of the stack and continuing just copies them
+back. Alexis King has an <a
+href="https://www.youtube.com/watch?v=DRFsodbxHQo">amazing talk</a>
+about this.</p>
+<p>What I’m going to do is based on what <a
+href="https://arxiv.org/pdf/2104.00250.pdf">OCaml 5</a> does though. The
+idea behind this approach is that if a continuation is used
+<em>linearly</em> (like the coroutine-like effects that are relevant to
+Multicore OCaml), the delimited call stack never actually needs to be
+duplicated. So what one can do is represent the program stack as a
+hybrid growable/segmented stack where every handler creates a new stack
+segment that is linked back to the previous through a pointer. Now
+performing an effect walks the stack to find the closest handler (just
+like throwing an exception would) and continues execution on
+<em>its</em> stack segment. Because there is a segment boundary between
+them, nothing in the suspended continuation will be overriden. When the
+continuation is resumed, control jumps back forward to the segment where
+the effect was performed, which is linked back to the point where the
+handler stack has resumed it.</p>
+<p>The diagrams in <a href="https://arxiv.org/pdf/2104.00250.pdf">the
+paper</a> are prettier than this, but you’ll have to bear with my ASCII
+art for this example.</p>
+<p>Let’s say your program looks something like this, where the
+expression at the <code>&lt;--</code> is currently being evaluated</p>
+<pre><code>f () = {
+    let x = 5
+    let returned = handle {
+        let y = 6
+        let result = perform SomeEffect &lt;---
+        result + 1
+    } with {
+        SomeEffect cont -&gt;
+            \x -&gt; continue cont x
+        }
+    }
+    let z = 7
+    let w = 8
+    returned 9
+}</code></pre>
+<p>This is a pretty contrived example but all it does is perform an
+effect that is handled by returning the continuation as a function,
+which is then called with 9 as an argument.</p>
+<p>Initially, the call stack for this is going to look something like
+this (where stacks grow downwards)</p>
+<pre><code>+-------+
+| x = 5 |   # the containing function
++-------+
+    ^
+    |
++-------+
+| y = 6 |  # the part inside the handle expression
++-------+ &lt;-- stack ptr</code></pre>
+<p>Performing the effect will disconnect the second segment and continue
+execution on the initial one while jumping to the correct handler code.
+<code>cont</code> is now given a pointer to the disconnected stack
+segment (= delimited continuation)</p>
+<pre><code>+---------+
+| x = 5   |
+| cont = ------------------+
++---------+ &lt;-- stack ptr  |
+                           |
++---------+                |
+| y = 6   | &lt;--------------+
++---------+</code></pre>
+<p>The handler further mutates and expands the first stack segment
+(which is fine since the second one is completely independent of it
+now!). It even returns the continuation wrapped in a function so at the
+point just before <code>returned 9</code>, the stack will look like
+this</p>
+<pre><code>+------------+
+| x = 5      |
+| returned = ---------------&gt; closure
+| z = 7      |                   |
+| w = 8      |                   |
++------------+ &lt;-- stack ptr     |
+                                 |
++---------+                      |
+| y = 6   | &lt;--------------------+
++---------+</code></pre>
+<p>Now all that continuing the continuation needs to do is link the
+second stack segment back to the first one and jump to the correct
+location in the code. It also invalidates the continuation inside
+<code>returned</code> since the stack segment will now be mutated and so
+cannot be resumed again.</p>
+<pre><code>+------------+
+| x = 5      |
+| returned = ---------------&gt; closure
+| z = 7      |                   |
+| w = 8      |                   |
++------------+                   X
+    ^                            
+    |                            X
++---------+                      |
+| y = 6   | &lt;--------------------+
++---------+ &lt;-- stack ptr</code></pre>
+<p>And that’s it! Notice how none of this ever had to copy stack frames
+around or do any operations that were not constant in the size of the
+call stack (other than finding the handler which can be done very
+efficiently).</p>
+<p>Importantly though this approach only works for one-shot
+continuations that are only used once. Trying to use the continuation
+more than once doesn’t work because the call stack has already been used
+up the first time<a href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>.</p>
+<p>In Vega, I’m going to need to have both linear and non-linear effects
+anyway since linear resources cannot be carried across calls to
+non-linear effects, so I can use that to take this fast path in the
+linear case and copy the continuation segment in the non-linear case so
+that it can be reused.</p>
+<p>Oh and if you’re writing a dumb tree-walk interpreter, CPS is enough
+to capture the continuation. That’s how I implemented effects in
+Flora.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>For example, <a
+href="https://www.microsoft.com/en-us/research/uploads/prod/2021/08/genev-icfp21.pdf">Koka
+desugars its effects to C/Java/JS through a multi-prompt continuation
+monad and a way of implicitly passing around prompt tags</a>.<a
+href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>If the continuation is never used, it will stick around
+and leak memory. This can be mitigated by registering a finalizer in the
+GC and letting it clean up unused continuations, but that has a sizeable
+performance cost so it’s not what OCaml does for its rather low level
+effects and I have linearity to ensure that they’re used or explicitly
+discontinued in Vega.<a href="#fnref2" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

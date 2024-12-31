@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>I really don't like let generalization</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="I really don't like let generalization">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="I really don't like let generalization">
+    <meta property="twitter:title" content="I really don't like let generalization">
+    <meta property="twitter:description" content="I really don't like let generalization">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/3399751-i-really-don-t-like">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">I really don't like let generalization</h1>
+        <span class="date">03 November 2023</span>        
+        <p>I just don’t think it’s worth it.</p>
+<p>I’ve written before about how let generalization makes language
+constructs like GADTs, that don’t necessarily have principal types, much
+harder to use. Note that this doesn’t only happen if a declaration
+mentions local variables from an outer scope as described in <a
+href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tldi10-vytiniotis.pdf">Let
+Should Not Be Generalized</a>!</p>
+<p>For example, as written, this Haskell code doesn’t compile because
+<code>test</code> doesn’t have a principal type, but uncommenting the
+<code>let _ = x</code> declaration prevents the type checker from
+generalizing <code>test</code>, which means that, based on the only
+usage site, its type is inferred to the much more specific
+<code>T Bool -&gt; Bool -&gt; Bool</code>, which compiles just fine.</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span>data</span> <span style="color: rgb(233, 228, 169);">T</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Type</span> <span style="color: rgb(49, 165, 133);">-&gt;</span> <span style="color: rgb(233, 228, 169);">Type</span> <span>where</span>
+  <span style="color: rgb(233, 228, 169);">T1</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">Int</span> <span style="color: rgb(49, 165, 133);">-&gt;</span> <span style="color: rgb(233, 228, 169);">T</span> <span style="color: rgb(233, 228, 169);">Bool</span>
+  <span style="color: rgb(233, 228, 169);">T2</span> <span style="color: rgb(49, 165, 133);">::</span> <span style="color: rgb(233, 228, 169);">T</span> <span>a</span>
+
+<span>f</span> <span>x</span> <span style="color: rgb(49, 165, 133);">=</span>
+  <span style="color: rgb(205, 203, 81);">let</span> 
+    <span>test</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">T1</span> <span>n</span><span style="color: rgb(49, 165, 133);">)</span> _ <span style="color: rgb(49, 165, 133);">=</span> <span>n</span> <span style="color: rgb(49, 165, 133);">&gt;</span> <span style="color: rgb(255, 209, 255);">0</span>
+    <span>test</span> <span style="color: rgb(233, 228, 169);">T2</span>     <span>r</span> <span style="color: rgb(49, 165, 133);">=</span> 
+      <span style="color: rgb(122, 154, 142);">-- let _ = x in</span>
+      <span>r</span>
+  <span style="color: rgb(205, 203, 81);">in</span>
+  <span>test</span> <span style="color: rgb(49, 165, 133);">(</span><span style="color: rgb(233, 228, 169);">T1</span> <span style="color: rgb(255, 209, 255);">5</span><span style="color: rgb(49, 165, 133);">)</span></code></pre>
+<div
+style="margin: -1.25rem -0.75rem 1.25rem; padding: 0.25rem 0.5rem; font-size: smaller; text-align: right; background: rgb(6, 36, 28); color: rgb(187, 238, 219);">
+syntax highlighting by
+<a href="https://codehost.wavebeem.com" style="font-weight: bolder;">codehost</a>
+</div>
+<h2
+id="but-thats-not-even-the-only-reason-to-dislike-let-generalization">But
+that’s not even the only reason to dislike let generalization!</h2>
+<p>Even in extremely simple programs, the tooling experience suffers
+<em>a lot</em> when lets are generalized. A pattern I like is defining
+function arguments to functions like <code>zipWith</code>
+(<code>List.map2</code> in OCaml) as a local binding. For example</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span style="color: rgb(205, 203, 81);">let</span> <span>doSomething</span> <span>index</span> <span>char</span> <span style="color: rgb(49, 165, 133);">=</span> <span style="color: rgb(49, 165, 133);">...</span> <span style="color: rgb(205, 203, 81);">in</span>
+
+<span>zipWith</span> <span>doSomething</span> <span style="color: rgb(49, 165, 133);">[</span><span style="color: rgb(255, 209, 255);">0</span><span style="color: rgb(49, 165, 133);">..</span><span style="color: rgb(255, 209, 255);">10</span><span style="color: rgb(49, 165, 133);">]</span> <span style="color: rgb(49, 165, 133);">[</span><span style="color: rgb(255, 167, 246);">'A'</span><span style="color: rgb(49, 165, 133);">..</span><span style="color: rgb(255, 167, 246);">'Z'</span><span style="color: rgb(49, 165, 133);">]</span></code></pre>
+<p>Now, what is the type of <code>char</code> in this case that shows up
+when I hover over it in my editor or in error messages it’s involved
+in?</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.75rem; margin: 1.25rem -0.75rem; border-radius: 0px; line-height: 1.5; overflow-x: auto; background: rgb(20, 49, 40); color: rgb(187, 238, 219); color-scheme: dark; scrollbar-color: rgb(187, 238, 219) rgb(6, 36, 28);"><code><span>a</span></code></pre>
+<p>Yeah. That’s not useful. The type is <code>Char</code> at the only
+usage site, but because <code>doSomething</code> is unnecessarily
+generalized, the compiler cannot <em>assume</em> that and instead infers
+the most general - but <em>definitely</em> not most relevant - type.</p>
+<h2 id="and-what-do-we-gain-in-return">And what do we gain in
+return?</h2>
+<p>Let generalization lets us avoid writing a type signature for
+<strong>polymorphic</strong> local declarations, that are used
+<strong>more than once</strong> and <strong>at different
+instantiations</strong>.</p>
+<p>I’d rather have better error messages.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

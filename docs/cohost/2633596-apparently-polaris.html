@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Apparently Polaris' constraint solver is non-confluent</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Apparently Polaris' constraint solver is non-confluent">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Apparently Polaris' constraint solver is non-confluent">
+    <meta property="twitter:title" content="Apparently Polaris' constraint solver is non-confluent">
+    <meta property="twitter:description" content="Apparently Polaris' constraint solver is non-confluent">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/2633596-apparently-polaris">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Apparently Polaris' constraint solver is non-confluent</h1>
+        <span class="date">27 August 2023</span>        
+        <p>With a constraint based type checker, the order in which constraints
+are solved should generally not matter. This is called confluence and it
+is a pretty important property, since it ensures that the constraint
+solver can process constraints out of order and apply a whole bunch of
+other clever optimizations. It also makes the type system much more
+predictable for programmers.</p>
+<p>But… currently changing the order in which constraints in Polaris are
+solved can infer wildly different types and that is pretty bad.</p>
+<h2 id="the-culprit-program-argument-constraints">The culprit: program
+argument constraints</h2>
+<p>One of the more fundamental features of Polaris are program calls.
+For example <code>!ls</code> is an expression that runs the program
+<code>ls</code> and returns it’s output. Of course, programs can also
+take arguments, but what types should those arguments have? In the end,
+the operating system is only going to pass strings, but in polaris,
+lists of strings (and lists of lists of … of lists of strings), numbers
+and even <a
+href="https://cohost.org/prophet/post/2484053-passing-closures-to">functions</a>
+are all valid program arguments. This is achieved by emitting a
+<code>ProgArg</code> constraint for the type of each argument, which is
+resolved correctly and quite elegantly for all of the above types.</p>
+<p>There is just one catch: What if the argument type is an unsolved
+unification variable? For example, what should the type of the following
+function be?</p>
+<pre><code>let f(x) = !ls x</code></pre>
+<p><code>!ls</code> returns a string, but we know nothing about its
+argument other than that it has a <code>ProgArg</code> constraint. We
+cannot solve the constraint, so we should emit an ambiguity error and
+reject the program.</p>
+<p>But that’s stupid! <em>Obviously</em>, the most natural type for this
+function is <code>String -&gt; String</code> and that is almost surely
+what the programmer meant when they wrote it.</p>
+<p>So what polaris currently does is that, if the constraint solver
+fails to make progress, it <em>defaults</em> <code>ProgArg</code>
+constraints to <code>String</code>, correctly inferring
+<code>f : String -&gt; String</code> for this example.</p>
+<h2 id="this-defaulting-breaks-confluence">This defaulting breaks
+confluence</h2>
+<p>This is easier to explain if we assume Polaris had functional
+dependencies (which it might get at some point). Non-confluence should
+manifest without them as well, but even if it doesn’t, that just delays
+the issue.</p>
+<p>Let’s say, we define a type class <code>C</code> with two functional
+dependencies on it’s arguments</p>
+<pre><code>class C(a, b) | a -&gt; b, b -&gt; a
+instance C(String, Number)
+instance C(List(String), String)</code></pre>
+<p>What this effectively means is that a constraint
+<code>C(String, x)</code> implies <code>x ~ Number</code> and
+<code>C(y, String)</code> implies <code>y ~ List(String)</code> (and
+vice versa).</p>
+<p>Okay, now imagine we task our constraint solver with solving this
+sequence of constraints</p>
+<pre><code>1: ProgArg(?a)
+2: C(?a, ?b)
+3: ProgArg(?b)</code></pre>
+<p>None of these can be solved directly, so our constraint solver will
+fail to make progress and start defaulting program arguments.</p>
+<p>If it starts with constraint (1), it will default
+<code>?a ~ String</code>. This unblocks the second constraint, now
+<code>C(String, ?b)</code>, which will be solved by our first instance
+and imply <code>?b ~ Number</code>. Constraint (3) is just
+<code>ProgArg(Number)</code> now, which is trivially solved, leaving us
+with the successful substitution</p>
+<pre><code>?a := String
+?b := Number</code></pre>
+<p>This actually doesn’t seem too unreasonable, but now consider what
+happens if our constraint solver decides to solve the constraints <em>in
+reverse</em>.</p>
+<p>If it starts at (3), it defaults <code>?b ~ String</code>, again
+unblocking (2), but with the second instance this time. This implies
+<code>?a ~ List(String)</code> now, which again leaves our third
+constraint to be trivially solved as it is just
+<code>ProgArg(List(String))</code> now. Therefore, our final
+substitution this time is</p>
+<pre><code>?a := List(String)
+?b := String</code></pre>
+<p>which <em>completely</em> contradicts the one from before, just
+because we changed the order in which constraints were solved (or
+emitted!).</p>
+<h2 id="so-what-are-we-going-to-do">So what are we going to do?</h2>
+<p>One solution would be to default <em>all</em> <code>ProgArg</code>
+constraints at once. If we did this above, we would substitute both
+<code>?a := String</code> and <code>?b := String</code>, which would
+actually lead to the cosntraint solver rejecting the program above,
+because the functional dependency on <code>C</code> means that
+<code>C(String, String)</code> is impossible to solve.</p>
+<p>This does restore confluence, however it might lead to some
+<em>very</em> counter intuitive errors. Removing a type signature
+somewhere might make the constraint solver give up and default a type
+somewhere completely different that would have been resolved correctly
+before.</p>
+<p>I think there is a better way</p>
+<h2 id="generalizing-program-argument-constraints">Generalizing program
+argument constraints</h2>
+<p>Program argument constraints predate type classes by a lot, but now
+that we finally have them, we might not actually need to default program
+arguments at all anymore! Remember that the entire reason we cared about
+defaulting was that we wanted to infer a type for declarations like
+<code>let f(x) = !ls x</code>.</p>
+<p>Now that we have type classes, we can just treat program argument
+constraints ~exactly like regular type class constraints and let users
+abstract over them! If we do this, we don’t need to pick a concrete type
+for <code>x</code>. We can just generalize the function and infer a type
+<code>f : forall a. ProgArg(a) =&gt; a -&gt; String</code>.</p>
+<p>Not only is this fully confluent, it also gives the programmer the
+power to do much more than they could before and possibly even leaves
+the door open for <em>custom</em> <code>ProgArg</code> instances in the
+future!</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

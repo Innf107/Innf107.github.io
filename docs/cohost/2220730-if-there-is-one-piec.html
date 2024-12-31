@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>If there is one piece of advice about type inference I think everyone should hear it's absolutely this</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="If there is one piece of advice about type inference I think everyone should hear it's absolutely this">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="If there is one piece of advice about type inference I think everyone should hear it's absolutely this">
+    <meta property="twitter:title" content="If there is one piece of advice about type inference I think everyone should hear it's absolutely this">
+    <meta property="twitter:description" content="If there is one piece of advice about type inference I think everyone should hear it's absolutely this">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/2220730-if-there-is-one-piec">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">If there is one piece of advice about type inference I think everyone should hear it's absolutely this</h1>
+        <span class="date">27 July 2023</span>        
+        <p><strong>Be <em>very</em> explicit about the difference between type
+variables, unification variables and skolems</strong></p>
+<p><strong>Type variables</strong> are always bound by
+<code>forall</code>s and represent variables that can be instantiated to
+any possible concrete type. For example,
+<code>forall a. a -&gt; a</code> can be instantiated to
+<code>Int -&gt; Int</code>, <code>String -&gt; String</code> or
+<code>Bool -&gt; Bool</code></p>
+<p><strong>Unification variables</strong> are placeholders that stand
+for as of yet unknown concrete types. These usually originate from
+usages of polymorphic types (where type variables are instantiated with
+<strong>fresh(!!!)</strong> unification variables at every use site,
+since every use site instantiates the type variable to a possibly
+different concrete type, but which one that is might not be known yet),
+but they are more generally useful in places where a type is needed that
+might not be fully known yet (e.g. unannotated lambda parameters or
+recursive let bindings)</p>
+<p><strong>Skolems</strong> on the other hand are type constants that
+are only equal to themselves. These are needed when <em>checking
+against</em> polymorphic types. The idea is that a function with type
+<code>forall a. a -&gt; a</code> cannot make any assumptions about the
+type of its parameter, which is ensured by checking it against the type
+<code>#a -&gt; #a</code> (where <code>#a</code> is a fresh skolem).</p>
+<p>These three are often confused since they could all reasonably be
+called “type variables”, but doing so will only bring you pain. They are
+distinct concepts and should really be treated as such.</p>
+<p>Unfortunately GHC is not great at this. In error messages,
+unification variables are <em>usually</em> displayed with a trailing
+number (<code>a0</code>), although something like <code>a1</code> can
+either be a unification variable or a skolem if just <code>a</code>
+would be ambiguous. The only way to tell which one it is is by looking
+for <code>'a1' is a rigid type variable bound by...</code> (you know, in
+the section of the error that noone actually reads because it’s massive
+and almost never useful)</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>I don't think people appreciate the tradeoffs they're making with algebraic data types</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="I don't think people appreciate the tradeoffs they're making with algebraic data types">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="I don't think people appreciate the tradeoffs they're making with algebraic data types">
+    <meta property="twitter:title" content="I don't think people appreciate the tradeoffs they're making with algebraic data types">
+    <meta property="twitter:description" content="I don't think people appreciate the tradeoffs they're making with algebraic data types">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/4979906-i-don-t-think-people">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">I don't think people appreciate the tradeoffs they're making with algebraic data types</h1>
+        <span class="date">09 March 2024</span>        
+        <p>Specifically, people don’t appreciate the commitment they’re making
+by exposing an ADT’s implementation. This commitment is &gt; Whenever
+this implementation changes in any way, I want <strong>every usage that
+matches on it to break</strong></p>
+<p>That’s a lot! This isn’t to say that ADTs with exposed
+implementations are <em>bad</em>. They’re perfectly fine if you either
+don’t care (the definition of <code>Maybe</code> is not going to change
+any time soon) or if breaking downstream code is something you
+<em>want</em>. E.g. if you’re writing a compiler, you want every
+function that consumes the AST to break until it handles the newly added
+cases.</p>
+<p>But it means that ADTs are just not a good choice if want to be able
+to add new cases or change the implementation details of existing ones
+in the future.</p>
+<p>And I wish functional programmers recognized this! It already starts
+with the most basic examples we give people.</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.5rem; margin: 1.25rem 0px 0px; border-radius: 0.25rem 0.25rem 0px 0px; line-height: 1.5; overflow-x: auto; color-scheme: dark; background: rgb(40, 42, 54); color: rgb(248, 248, 242); scrollbar-color: rgb(248, 248, 242) rgb(25, 26, 33);"><code><span style="color: rgb(255, 121, 198);">data</span> <span style="color: rgb(189, 147, 249);">Shape</span>
+  <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(189, 147, 249);">Circle</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span>
+  <span style="color: rgb(255, 121, 198);">|</span> <span style="color: rgb(189, 147, 249);">Rectangle</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span>
+
+<span>surface</span> <span style="color: rgb(255, 121, 198);">::</span> <span style="color: rgb(189, 147, 249);">Shape</span> <span style="color: rgb(255, 121, 198);">-&gt;</span> <span style="color: rgb(189, 147, 249);">Float</span>
+<span>surface</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(189, 147, 249);">Circle</span> <span>_</span> <span>_</span> <span>r</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(139, 233, 253);">pi</span> <span style="color: rgb(255, 121, 198);">*</span> <span>r</span> <span style="color: rgb(255, 121, 198);">^</span> <span style="color: rgb(189, 147, 249);">2</span>
+<span>surface</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(189, 147, 249);">Rectangle</span> <span>x1</span> <span>y1</span> <span>x2</span> <span>y2</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(139, 233, 253);">abs</span> <span style="color: rgb(255, 121, 198);">$</span> <span>x2</span> <span style="color: rgb(255, 121, 198);">-</span> <span>x1</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">*</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(139, 233, 253);">abs</span> <span style="color: rgb(255, 121, 198);">$</span> <span>y2</span> <span style="color: rgb(255, 121, 198);">-</span> <span>y1</span><span style="color: rgb(248, 248, 242);">)</span></code></pre>
+<div
+style="margin-bottom: 1.25rem; padding: 0.25rem 0.5rem; font-size: smaller; text-align: right; border-radius: 0px 0px 0.25rem 0.25rem; background: rgb(25, 26, 33); color: rgb(248, 248, 242);">
+syntax highlighting by
+<a href="https://codehost.wavebeem.com">codehost</a>
+</div>
+<p>This particular one is from <a
+href="https://learnyouahaskell.com/making-our-own-types-and-typeclasses#algebraic-data-types">Learn
+You A Haskell</a>, but there are many similar ones in many other
+beginner resources.</p>
+<p>This is a <em>terrible</em> way to model a shape! Your program is
+almost certainly going to want to handle more shapes than <em>just</em>
+circles and rectangles at some point, but with this definition you can’t
+add more without breaking every consumer!</p>
+<p>And it’s not like Haskell doesn’t have the tools to deal with this!
+This case could absolutely be defined more reasonably like this.</p>
+<pre tabindex="0" style="box-sizing: border-box; padding: 0.5rem; margin: 1.25rem 0px 0px; border-radius: 0.25rem 0.25rem 0px 0px; line-height: 1.5; overflow-x: auto; color-scheme: dark; background: rgb(40, 42, 54); color: rgb(248, 248, 242); scrollbar-color: rgb(248, 248, 242) rgb(25, 26, 33);"><code><span style="color: rgb(255, 121, 198);">data</span> <span style="color: rgb(189, 147, 249);">Circle</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(189, 147, 249);">Circle</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span>
+<span style="color: rgb(255, 121, 198);">data</span> <span style="color: rgb(189, 147, 249);">Rectangle</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(189, 147, 249);">Rectangle</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span> <span style="color: rgb(189, 147, 249);">Float</span>
+
+<span style="color: rgb(255, 121, 198);">class</span> <span style="color: rgb(189, 147, 249);">Surface</span> <span>shape</span> <span style="color: rgb(255, 121, 198);">where</span>
+    <span>surface</span> <span style="color: rgb(255, 121, 198);">::</span> <span>shape</span> <span style="color: rgb(255, 121, 198);">-&gt;</span> <span style="color: rgb(189, 147, 249);">Float</span>
+
+<span style="color: rgb(255, 121, 198);">instance</span> <span style="color: rgb(189, 147, 249);">Surface</span> <span style="color: rgb(189, 147, 249);">Circle</span> <span style="color: rgb(255, 121, 198);">where</span>
+    <span>surface</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(189, 147, 249);">Circle</span> <span>_</span> <span>_</span> <span>r</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(139, 233, 253);">pi</span> <span style="color: rgb(255, 121, 198);">*</span> <span>r</span> <span style="color: rgb(255, 121, 198);">^</span> <span style="color: rgb(189, 147, 249);">2</span>
+<span style="color: rgb(255, 121, 198);">instance</span> <span style="color: rgb(189, 147, 249);">Surface</span> <span style="color: rgb(189, 147, 249);">Rectangle</span> <span style="color: rgb(255, 121, 198);">where</span>
+    <span>surface</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(189, 147, 249);">Rectangle</span> <span>x1</span> <span>y1</span> <span>x2</span> <span>y2</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">=</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(139, 233, 253);">abs</span> <span style="color: rgb(255, 121, 198);">$</span> <span>x2</span> <span style="color: rgb(255, 121, 198);">-</span> <span>x1</span><span style="color: rgb(248, 248, 242);">)</span> <span style="color: rgb(255, 121, 198);">*</span> <span style="color: rgb(248, 248, 242);">(</span><span style="color: rgb(139, 233, 253);">abs</span> <span style="color: rgb(255, 121, 198);">$</span> <span>y2</span> <span style="color: rgb(255, 121, 198);">-</span> <span>y1</span><span style="color: rgb(248, 248, 242);">)</span></code></pre>
+<div
+style="margin-bottom: 1.25rem; padding: 0.25rem 0.5rem; font-size: smaller; text-align: right; border-radius: 0px 0px 0.25rem 0.25rem; background: rgb(25, 26, 33); color: rgb(248, 248, 242);">
+syntax highlighting by
+<a href="https://codehost.wavebeem.com">codehost</a>
+</div>
+<p>If this reminds you of object oriented programming, that’s because
+the OOP solution is just plain better here and I wish functional
+programmers would stop rejecting anything that reminds them of it.</p>
+<p>Algebraic data types are great but they’re not a panacea.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

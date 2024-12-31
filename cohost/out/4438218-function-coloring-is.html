@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Function coloring is good actually</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Function coloring is good actually">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="Function coloring is good actually">
+    <meta property="twitter:title" content="Function coloring is good actually">
+    <meta property="twitter:description" content="Function coloring is good actually">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/4438218-function-coloring-is">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">Function coloring is good actually</h1>
+        <span class="date">11 February 2024</span>        
+        <p>So, one thought I’ve been having a lot recently regarding “function
+coloring” is that I really do not believe that async functions being
+colored at all is the issue. I actually think it’s good!</p>
+<p>Really, what I think is a lot more relevant is that languages with
+async/await typically have <em>two</em> ways of doing IO: one that is
+sync and untagged and one that is async and tagged. This means that even
+functions that are intended to do IO are usually written as sync
+functions by default and so of course doing something asynchronous
+somewhere contaminates most of the codebase with “unnecessary” async
+functions.</p>
+<p>If all IO in a language were async, I really don’t think people would
+complain about coloring nearly as much as they do, since it would be
+pretty obvious ahead of time if a function needs to be async or not. If
+you’re calling a function that doesn’t seem like it should read from or
+write to files but in reality it calls a function that does, <em>that’s
+an issue</em>! You would <em>want</em> your compiler to prevent you from
+doing that, wouldn’t you?</p>
+<p>In fact, Haskell’s IO monad kind of works like that and it’s great!
+This isn’t quite a fair comparison since Haskell’s notion of IO is a lot
+broader than the one used by async, but I still think it shows that the
+coloring itself is not the issue.</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>How is Racket the only serious "multi-paradigm" programming language</title>
+    <meta name=viewport content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="How is Racket the only serious "multi-paradigm" programming language">
+    <meta property="og:site_name" content="welltypedwit.ch">
+    <meta property="og:description" content="How is Racket the only serious "multi-paradigm" programming language">
+    <meta property="twitter:title" content="How is Racket the only serious "multi-paradigm" programming language">
+    <meta property="twitter:description" content="How is Racket the only serious "multi-paradigm" programming language">
+    <meta property="twitter:url" content="https://welltypedwit.ch/cohost/7431976-how-is-racket-the-on">
+    <meta property="twitter:type" content="summary">
+    <meta property="twitter:domain" content="welltypedwit.ch">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inria+Sans:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/css/cohost.css">
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+</head>
+
+<body>
+    <div class="underline-wrapper">
+        <nav class="main-nav">
+            <a href="/cohost" class="site-title">Cohost</a>
+        </nav>
+    </div>
+
+    <article class="post">
+        <h1 class="post-header">How is Racket the only serious "multi-paradigm" programming language</h1>
+        <span class="date">26 August 2024</span>        
+        <p>“Programming paradigms” are a pretty vague and frankly not very
+meaningful concept but if you’re going to argue that your programming
+language supports both imperative and functional programming, you’ll at
+the very least have to give me access to mutable <em>and</em> persistent
+data structures.</p>
+<p>Racket does this quite nicely by giving you two mostly compatible
+versions of each (e.g. <code>hash</code> creates an immutable hash table
+and <code>make-hash</code> creates a mutable one but you can access both
+with <code>hash-ref</code>) but that’s kind of… it?</p>
+<p>Some Haskell packages work like this (notably vector) but overall the
+support for good mutable data structures there is pretty lacking.</p>
+<p>OCaml likes to pretend that it’s good at this but it actually only
+has some fundamental data structures that are immutable (e.g. lists,
+sets) and some that are mutable (e.g. arrays, queues). This means that
+e.g. because there are no immutable arrays, there is also no fast
+slicing operation on arrays and so you’ll pretty much be forced to use a
+more imperative style with them because you can’t even write a generic
+function on arrays without passing around indices like a
+Neanderthal.</p>
+<p>And functional JS makes you do linear time slicing/concatenation on
+mutable arrays in a loop :)</p>
+
+        <hr>
+        <footer>
+            This was originally posted on cohost.org. As cohost shut down in late 2024, it now lives here.
+        </footer>    
+    </article>
+</body>
+
+</html>
