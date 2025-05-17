@@ -289,7 +289,8 @@ tr {
     color: rgb(161, 161, 161);
 }
 
-.st {
+/* string/char literals */
+.st, .ch {
     color: rgb(0, 255, 231);
 }
 

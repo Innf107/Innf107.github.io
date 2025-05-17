@@ -484,6 +484,7 @@ let postDetails = buildPosts(List.reverse([
         "insttypes",
         "classTries",
         "newtypes",
+        "value-restriction"
     ]))
 
 let _ = await Async.all([
