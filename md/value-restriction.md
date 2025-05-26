@@ -60,7 +60,7 @@ So the value passed to the continuation (corresponding to the variable in the le
 
 Now, `newIORef Nothing` can itself have a polymorphic type.
 ```hs
-newIORef Nothing :: forall a. IO (IORef a)
+newIORef Nothing :: forall a. IO (IORef (Maybe a))
 ```
 
 However, notice that the polymorphic forall quantifier occurs *outside* the `IO`! This means that the value passed to the continuation of `(newIORef Nothing >>=)` will always have type `IORef _` and therefore be *monomorphic*. We can instantiate the `a` with `forall a. Maybe a`, but that only gives us a perfectly safe `IORef (forall a. Maybe a)`[^nothing], *not* a `forall a. IORef (Maybe a)`.
