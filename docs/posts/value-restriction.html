@@ -213,7 +213,7 @@ variable in the let binding) has whatever type is wrapped
 argument.</p>
 <p>Now, <code>newIORef Nothing</code> can itself have a polymorphic
 type.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>newIORef <span class="dt">Nothing</span><span class="ot"> ::</span> <span class="kw">forall</span> a<span class="op">.</span> <span class="dt">IO</span> (<span class="dt">IORef</span> a)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>newIORef <span class="dt">Nothing</span><span class="ot"> ::</span> <span class="kw">forall</span> a<span class="op">.</span> <span class="dt">IO</span> (<span class="dt">IORef</span> (<span class="dt">Maybe</span> a))</span></code></pre></div>
 <p>However, notice that the polymorphic forall quantifier occurs
 <em>outside</em> the <code>IO</code>! This means that the value passed
 to the continuation of <code>(newIORef Nothing &gt;&gt;=)</code> will
