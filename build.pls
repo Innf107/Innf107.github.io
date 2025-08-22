@@ -5,6 +5,7 @@ options {
     "--watch-interval" (watchInterval = "0.25s"): "Interval to check for file modifications. This accepts any format accepted by 'sleep'"
     "--clean" as clean: "Delete build outputs without actually building anything"
     "--force-cohost" as forceCohost: "Rebuild cohost posts even if the cohost/out directory exists"
+    "--force-rebuild-opengraph" as forceRebuildOpenGraph: "Unconditionally rebuild the opengraph image generation script"
 }
 
 module List = import("@std/list.pls")
@@ -13,6 +14,7 @@ module Async = import("@std/async.pls")
 if clean then {
     !rm "-rf" "docs"
     !rm "-rf" "cohost/out"
+    !rm "-rf" "opengraph/node_modules" "opengraph/generate.js"
     exit(0)
 } else {}
 
@@ -260,8 +262,13 @@ let buildPost(name) = withFloraSession(\session -> {
     let fileContents = !cat filePath
 
     let env = newEnv(session)
+    writeVar(env, "name", name)
 
     let processedPostBody = processMarkup(session, env, fileContents)
+
+    let title = readVar(env, "title")
+    let date = readVar(env, "date")
+    let openGraphImage = async !node "opengraph/generate.js" title date
 
     writeBuildFile(session, env, "body", processedPostBody)
     writeVar(env, "url", "https://welltypedwit.ch/posts/${name}.html")
@@ -269,6 +276,8 @@ let buildPost(name) = withFloraSession(\session -> {
     let fullPostHTML = evalTemplate(session, env, "post.html")
 
     writeFile("docs/posts/${name}.html", fullPostHTML)
+
+    writeFile("docs/opengraph/posts/${name}.png", await openGraphImage)
 
     PostDetails(
         { title = readVar(env, "title")
@@ -470,6 +479,15 @@ let buildCohost() = withFloraSession(\session -> {
 !cp "-r" "css" "docs/css"
 
 !mkdir "-p" "docs/posts"
+!mkdir "-p" "docs/opengraph/posts"
+
+if forceRebuildOpenGraph || not doesFileExist("opengraph/node_modules") || not doesFileExist("opengraph/generate.js") then {
+    chdir("opengraph")
+    !npm "install"
+    !npx "tsc" "generate.tsx" "--jsx" "react"
+    chdir("..")
+    ()
+} else {}
 
 let cohost = async {
     if (forceCohost || not (doesFileExist("cohost/out"))) then {

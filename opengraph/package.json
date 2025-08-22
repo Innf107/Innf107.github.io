@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "react": "^19.1.1",
+    "satori": "^0.16.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
+  }
+}
