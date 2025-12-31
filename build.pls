@@ -477,6 +477,7 @@ let buildCohost() = withFloraSession(\session -> {
 !cp "CNAME" "docs/CNAME"
 !cp "-r" "js" "docs/js"
 !cp "-r" "css" "docs/css"
+!cp "-r" "assets" "docs/assets"
 
 !mkdir "-p" "docs/posts"
 !mkdir "-p" "docs/opengraph/posts"
@@ -502,7 +503,8 @@ let postDetails = buildPosts(List.reverse([
         "insttypes",
         "classTries",
         "newtypes",
-        "value-restriction"
+        "value-restriction",
+        "runst-does-not-prevent-resources-from-escaping",
     ]))
 
 let _ = await Async.all([

@@ -9,10 +9,11 @@
     --code-font: 'Fira Code', monospace;
     --primary-start: rgb(0, 140, 255);
     --primary-end: rgb(255, 81, 255);
+    --background-color: rgb(0, 0, 0)
 }
 
 body {
-    background-color: rgb(0, 0, 0);
+    background-color: var(--background-color);
 
     font-family: var(--main-font);
 
@@ -305,4 +306,23 @@ tr {
    this site so we resuse the CSS class to emulate \textsc instead. */
 .katex .textmd {
     font-variant: small-caps;
+}
+
+
+
+.block {
+    background: linear-gradient(to right, var(--primary-start), var(--primary-end));
+    padding: 2px;
+    border-radius: 5px;
+}
+.block-contents {
+    background: var(--background-color);
+    /* We cannot set padding top or bottom to 0 here as that would trigger margin collapse
+       and ruin our background border trick */
+    padding: 10px;
+    border-radius: 5px;
+}
+.block-contents-inline-code-wrapper {
+    background: linear-gradient(to right, var(--primary-start), var(--primary-end));
+    background-clip: text;
 }
