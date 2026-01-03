@@ -145,18 +145,21 @@ Leaking the `STRef` (or any other resource tagged this way) is absolutely possib
 ## Bonus: We don't even need existentials
 Using regular higher-rank types, we can encode an existential type like `exists s. T s` as a rank-2 function `forall r. (forall s. T s -> r) -> r`.
 
-And that's still enough for a use-after-free!
+And that's still enough for a use-after-free![^kindsignature]
 
 ```hs
-newtype NotSoSafePtr a = MkNotSoSafePtr (forall r. (forall s. SafePtr s a -> r) -> r)
+newtype NotSoSafePtr a = MkNotSoSafePtr (forall r. (forall (s :: Type). SafePtr s a -> r) -> r)
 
 main :: IO ()
 main = do
     MkNotSoSafePtr usePtr <- allocaSafe @Int \safePtr -> pure (MkNotSoSafePtr \f -> f safePtr)
     usePtr \pointer -> pokeSafe pointer 42    
-
 ``` 
 
 [^whyllm]: A bit more seriously: I think this works as a decent proxy for what the average haskeller thinks. At a minimum, its explanation lines up with what I used to believe.
 
 [^alloca]: If you're wondering why I'm defining `allocaSafe` in terms of [`malloc`](https://hackage-content.haskell.org/package/base-4.22.0.0/docs/Foreign-Marshal-Alloc.html#v:malloc) and [`free`](https://hackage-content.haskell.org/package/base-4.22.0.0/docs/Foreign-Marshal-Alloc.html#v:free) instead of [`alloca`](https://hackage-content.haskell.org/package/base-4.22.0.0/docs/Foreign-Marshal-Alloc.html#v:alloca), it's because `alloca` actually doesn't use `malloc`! It [allocates a byte array on the garbage collected heap and then takes an unmanaged pointer to its contents](https://hackage-content.haskell.org/package/ghc-internal-9.1401.0/docs/src/GHC.Internal.Foreign.Marshal.Alloc.html#allocaBytesAlignedAndUnchecked) because that's faster than actually going through `malloc` and `free`. So if we leaked the pointer out of `alloca`, there would still be a risk of use-after-free but it would only trigger after a garbage collection and wouldn't be on the C heap so it would be hard to detect.
+
+[^kindsignature]:
+The `s :: Type` kind signature in this type is necessary, since otherwise GHC will produce a very confusing error message about how "a newtype constructor cannot contain existential type variables" because it introduces an implicit kind variable `k` that gives `MkNotSoSafePtr` type `forall {k}. (forall r. (forall (s :: k). SafePtr s a -> r) -> r) -> NotSoSafePtr a`, where the `k` is an existential.  
+The `s` parameter of `ST` has kind `Type`, so this is exactly how it would work in that case and we don't gain anything useful from the additional kind polymorphism anyway.

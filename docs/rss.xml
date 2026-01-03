@@ -4,7 +4,7 @@
         <link>https://welltypedwit.ch</link>
         <description>welltypedwitch's blog</description>
         <language>en-us</language>
-        <lastBuildDate>Wed, 31 Dec 2025 01:19:56 +0100</lastBuildDate>
+        <lastBuildDate>Sat, 03 Jan 2026 15:51:19 +0100</lastBuildDate>
         <item>
     <title>runST does not prevent resources from escaping</title>
     <link>https://welltypedwit.ch/posts/runst-does-not-prevent-resources-from-escaping.html</link>
@@ -145,9 +145,10 @@ existentials</h2>
 <p>Using regular higher-rank types, we can encode an existential type
 like <code>exists s. T s</code> as a rank-2 function
 <code>forall r. (forall s. T s -&gt; r) -&gt; r</code>.</p>
-<p>And that’s still enough for a use-after-free!</p>
+<p>And that’s still enough for a use-after-free!<a href="#fn3"
+class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="sourceCode" id="cb10"><pre
-class="sourceCode hs"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">NotSoSafePtr</span> a <span class="ot">=</span> <span class="dt">MkNotSoSafePtr</span> (<span class="kw">forall</span> r<span class="op">.</span> (<span class="kw">forall</span> s<span class="op">.</span> <span class="dt">SafePtr</span> s a <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> r)</span>
+class="sourceCode hs"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">NotSoSafePtr</span> a <span class="ot">=</span> <span class="dt">MkNotSoSafePtr</span> (<span class="kw">forall</span> r<span class="op">.</span> (<span class="kw">forall</span> (<span class="ot">s ::</span> <span class="dt">Type</span>)<span class="op">.</span> <span class="dt">SafePtr</span> s a <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> r)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="ot">main ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> <span class="kw">do</span></span>
@@ -178,6 +179,18 @@ pointer out of <code>alloca</code>, there would still be a risk of
 use-after-free but it would only trigger after a garbage collection and
 wouldn’t be on the C heap so it would be hard to detect.<a
 href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>The <code>s :: Type</code> kind signature in this type
+is necessary, since otherwise GHC will produce a very confusing error
+message about how “a newtype constructor cannot contain existential type
+variables” because it introduces an implicit kind variable
+<code>k</code> that gives <code>MkNotSoSafePtr</code> type
+<code>forall {k}. (forall r. (forall (s :: k). SafePtr s a -&gt; r) -&gt; r) -&gt; NotSoSafePtr a</code>,
+where the <code>k</code> is an existential.<br />
+The <code>s</code> parameter of <code>ST</code> has kind
+<code>Type</code>, so this is exactly how it would work in that case and
+we don’t gain anything useful from the additional kind polymorphism
+anyway.<a href="#fnref3" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>]]></description>
     <pubDate>Wed, 31 Dec 2025 00:00:00 +0100</pubDate>
